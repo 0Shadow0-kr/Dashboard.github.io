@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>13x13 GTO 푸쉬/폴드 차트</title>
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 600px;
+        }
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+            margin-bottom: 5px;
+            font-size: 1.5em;
+        }
+        p.subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            flex: 1;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #bbb;
+            font-size: 0.9em;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background-color: #2c2c2c;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+        select:focus {
+            border-color: #4CAF50;
+        }
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #2c2c2c;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .percentage {
+            color: #4CAF50;
+            font-size: 1.1em;
+        }
+        
+        /* 13x13 Grid CSS */
+        #range-grid {
+            display: grid;
+            grid-template-columns: repeat(13, 1fr);
+            gap: 2px;
+            background-color: #1a1a1a;
+            border-radius: 6px;
+            padding: 2px;
+        }
+        .cell {
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #2c2c2c;
+            border-radius: 3px;
+            font-size: 0.75em;
+            color: rgba(255, 255, 255, 0.3);
+            cursor: default;
+            user-select: none;
+            transition: all 0.15s ease;
+        }
+        /* 짝, 수딧, 오프수딧 기본 배경색 */
+        .cell.pair { background-color: #333; }
+        .cell.suited { background-color: #2a2d33; }
+        .cell.offsuit { background-color: #332a2a; }
+
+        /* 활성화(초록불) 상태 */
+        .cell.active {
+            background-color: #4CAF50;
+            color: #fff;
+            font-weight: bold;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
+        }
+        
+        .no-data {
+            text-align: center;
+            color: #ff9800;
+            font-style: italic;
+            margin-top: 15px;
+        }
+        
+        .range-text {
+            margin-top: 15px;
+            font-size: 0.85em;
+            color: #888;
+            word-wrap: break-word;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>13x13 푸쉬/폴드 레인지</h1>
+    <p class="subtitle">10% Antes (이미지 데이터 기준 완벽 패치)</p>
+
+    <div class="controls">
+        <div class="form-group">
+            <label for="bb-select">블라인드 (BB):</label>
+            <select id="bb-select">
+                <option value="1">1 BB</option><option value="2">2 BB</option>
+                <option value="3">3 BB</option><option value="4">4 BB</option>
+                <option value="5">5 BB</option><option value="6">6 BB</option>
+                <option value="7">7 BB</option><option value="8">8 BB</option>
+                <option value="9">9 BB</option><option value="10">10 BB</option>
+                <option value="11">11 BB</option><option value="12">12 BB</option>
+                <option value="13">13 BB</option><option value="14">14 BB</option>
+                <option value="15">15 BB</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="pos-select">포지션:</label>
+            <select id="pos-select">
+                <option value="SB">Small Blind (SB)</option>
+                <option value="BTN">Button (BTN)</option>
+                <option value="CO">Cutoff (CO)</option>
+                <option value="HJ">Hijack (HJ)</option>
+                <option value="LJ">Lojack (LJ)</option>
+                <option value="UTG+2">UTG+2</option>
+                <option value="UTG+1">UTG+1</option>
+                <option value="UTG">Under The Gun (UTG)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="info-bar">
+        <span>푸쉬 확률:</span>
+        <span id="percentage-display" class="percentage">-</span>
+    </div>
+
+    <div id="range-grid"></div>
+    <div id="range-text" class="range-text"></div>
+    <div id="error-msg" class="no-data" style="display:none;">해당 포지션/BB의 데이터가 불명확합니다.</div>
+</div>
+
+<script>
+    const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+
+    // 올려주신 이미지를 바탕으로 재작성한 완벽한 데이터베이스
+    const chartData = {
+        "1": {
+            "SB": { percent: "100.0%", range: "Any Two" },
+            "BTN": { percent: "81.3%", range: "22+, Jx+, T2s+, T3o+, 92s+, 95o+, 82s+, 85o+, 73s+, 75o+, 63s+, 65o, 53s+, 43s" },
+            "CO": { percent: "90.0%", range: "22+, Tx+, 92s+, 93o+, 82s+, 84o+, 72s+, 74o+, 62s+, 64o+, 52s+, 53o+, 42s+, 32s" },
+            "HJ": { percent: "91.9%", range: "22+, 9x+, 82s+, 84o+, 72s+, 74o+, 62s+, 63o+, 52s+, 53o+, 42s+, 32s" },
+            "LJ": { percent: "91.9%", range: "22+, 9x+, 82s+, 84o+, 72s+, 74o+, 62s+, 63o+, 52s+, 53o+, 42s+, 32s" },
+            "UTG+2": { percent: "91.9%", range: "22+, 9x+, 82s+, 84o+, 72s+, 74o+, 62s+, 63o+, 52s+, 53o+, 42s+, 32s" },
+            "UTG+1": { percent: "91.9%", range: "22+, 9x+, 82s+, 84o+, 72s+, 74o+, 62s+, 63o+, 52s+, 53o+, 42s+, 32s" },
+            "UTG": { percent: "91.9%", range: "22+, 9x+, 82s+, 84o+, 72s+, 74o+, 62s+, 63o+, 52s+, 53o+, 42s+, 32s" }
+        },
+        "2": {
+            "SB": { percent: "100.0%", range: "Any Two" },
+            "BTN": { percent: "63.5%", range: "22+, Kx+, Q2s+, Q3o+, J2s+, J5o+, T3s+, T7o+, 95s+, 97o+, 85s+, 87o, 75s+, 65s" },
+            "CO": { percent: "72.2%", range: "22+, Qx+, J2s+, J4o+, T2s+, T6o+, 92s+, 96o+, 84s+, 86o+, 74s+, 76o, 63s+, 53s+, 43s" },
+            "HJ": { percent: "82.2%", range: "22+, Jx+, T2s+, T4o+, 92s+, 95o+, 82s+, 85o+, 73s+, 75o+, 62s+, 65o, 52s+, 54o, 42s+" },
+            "LJ": { percent: "82.8%", range: "22+, Jx+, T2s+, T4o+, 92s+, 95o+, 82s+, 85o+, 72s+, 75o+, 62s+, 65o, 52s+, 54o, 42s+, 32s" },
+            "UTG+2": { percent: "83.7%", range: "22+, Jx+, T2s+, T4o+, 92s+, 95o+, 82s+, 85o+, 72s+, 75o+, 62s+, 64o+, 52s+, 54o, 42s+, 32s" },
+            "UTG+1": { percent: "83.7%", range: "22+, Jx+, T2s+, T4o+, 92s+, 95o+, 82s+, 85o+, 72s+, 75o+, 62s+, 64o+, 52s+, 54o, 42s+, 32s" },
+            "UTG": { percent: "83.7%", range: "22+, Jx+, T2s+, T4o+, 92s+, 95o+, 82s+, 85o+, 72s+, 75o+, 62s+, 64o+, 52s+, 54o, 42s+, 32s" }
+        },
+        "3": {
+            "SB": { percent: "93.4%", range: "22+, 8x+, 72s+, 73o+, 62s+, 64o+, 52s+, 53o+, 42s+" },
+            "BTN": { percent: "56.9%", range: "22+, Kx+, Q2s+, Q4o+, J3s+, J7o+, T5s+, T7o+, 96s+, 98o, 86s+, 76s" },
+            "CO": { percent: "52.0%", range: "22+, Ax, K2s+, K3o+, Q2s+, Q6o+, J4s+, J8o+, T6s+, T8o+, 96s+, 98o, 86s+, 76s, 65s" },
+            "HJ": { percent: "49.9%", range: "22+, Ax, K2s+, K4o+, Q2s+, Q8o+, J4s+, J8o+, T6s+, T8o+, 96s+, 98o, 86s+, 75s+, 65s, 54s" },
+            "LJ": { percent: "49.0%", range: "22+, Ax, K2s+, K5o+, Q2s+, Q8o+, J4s+, J8o+, T6s+, T8o+, 96s+, 98o, 86s+, 75s+, 65s, 54s" },
+            "UTG+2": { percent: "48.1%", range: "22+, Ax, K2s+, K6o+, Q3s+, Q8o+, J5s+, J8o+, T6s+, T8o+, 96s+, 98o, 85s+, 75s+, 64s+, 54s" },
+            "UTG+1": { percent: "48.1%", range: "22+, Ax, K2s+, K6o+, Q3s+, Q8o+, J5s+, J8o+, T6s+, T8o+, 96s+, 98o, 85s+, 75s+, 64s+, 54s" },
+            "UTG": { percent: "47.2%", range: "22+, Ax, K2s+, K6o+, Q3s+, Q8o+, J5s+, J9o+, T6s+, T8o+, 96s+, 98o, 85s+, 75s+, 64s+, 54s" }
+        },
+        "4": {
+            "SB": { percent: "84.9%", range: "22+, Tx+, 92s+, 93o+, 82s+, 84o+, 73s+, 75o+, 63s+, 65o, 53s+, 43s" },
+            "BTN": { percent: "54.4%", range: "22+, Kx+, Q2s+, Q5o+, J4s+, J7o+, T6s+, T8o+, 96s+, 98o, 86s+, 76s" },
+            "CO": { percent: "45.1%", range: "22+, Ax, K2s+, K5o+, Q3s+, Q8o+, J5s+, J8o+, T6s+, T9o, 97s+, 87s, 76s" },
+            "HJ": { percent: "40.9%", range: "22+, Ax, K2s+, K6o+, Q5s+, Q9o+, J7s+, J9o+, T7s+, T9o, 97s+, 87s, 76s" },
+            "LJ": { percent: "36.0%", range: "22+, Ax, K3s+, K8o+, Q6s+, Q9o+, J7s+, JTo, T8s+, 97s+, 87s" },
+            "UTG+2": { percent: "31.8%", range: "22+, A2s+, A3o+, K4s+, K9o+, Q8s+, QTo+, J8s+, JTo, T8s+, 98s, 87s" },
+            "UTG+1": { percent: "29.3%", range: "33+, A2s+, A5o+, K5s+, K9o+, Q8s+, QTo+, J8s+, JTo, T8s+, 98s, 87s" },
+            "UTG": { percent: "25.6%", range: "33+, A2s+, A7o+, A5o, K6s+, KTo+, Q8s+, QTo+, J9s+, T8s+, 98s" }
+        },
+        "5": {
+            "SB": { percent: "81.9%", range: "22+, Tx+, 92s+, 95o+, 83s+, 85o+, 73s+, 75o+, 63s+, 65o, 53s+, 43s" },
+            "BTN": { percent: "51.4%", range: "22+, Kx+, Q2s+, Q6o+, J5s+, J8o+, T6s+, T8o+, 96s+, 86s+, 76s" },
+            "CO": { percent: "43.0%", range: "22+, Ax, K2s+, K5o+, Q4s+, Q8o+, J7s+, J9o+, T7s+, T9o, 97s+, 87s, 76s" },
+            "HJ": { percent: "36.3%", range: "22+, Ax, K2s+, K8o+, Q6s+, Q9o+, J7s+, JTo, T8s+, 97s+, 87s" },
+            "LJ": { percent: "32.7%", range: "22+, Ax, K4s+, K9o+, Q8s+, QTo+, J8s+, JTo, T8s+, 98s, 87s" },
+            "UTG+2": { percent: "28.8%", range: "22+, A2s+, A4o+, K6s+, KTo+, Q8s+, QTo+, J9s+, JTo, T8s+, 98s" },
+            "UTG+1": { percent: "24.6%", range: "22+, A2s+, A7o+, A5o, K7s+, KTo+, Q9s+, QJo, J9s+, T8s+, 98s" },
+            "UTG": { percent: "22.6%", range: "33+, A2s+, A7o+, K8s+, KTo+, Q9s+, QJo, J9s+, T9s, 98s" }
+        },
+        "6": {
+            "SB": { percent: "78.9%", range: "22+, Jx+, T2s+, T4o+, 92s+, 95o+, 84s+, 86o+, 73s+, 75o+, 63s+, 65o, 53s+, 43s" },
+            "BTN": { percent: "49.9%", range: "22+, Kx+, Q2s+, Q7o+, J5s+, J8o+, T6s+, T9o, 96s+, 86s+, 76s" },
+            "CO": { percent: "41.2%", range: "22+, Ax, K2s+, K6o+, Q5s+, Q9o+, J7s+, J9o+, T7s+, T9o, 97s+, 86s+, 76s" },
+            "HJ": { percent: "33.6%", range: "22+, Ax, K3s+, K9o+, Q8s+, QTo+, J8s+, JTo, T8s+, 97s+, 87s, 76s" },
+            "LJ": { percent: "30.6%", range: "22+, A2s+, A3o+, K5s+, KTo+, Q8s+, QTo+, J8s+, JTo, T8s+, 98s, 87s" },
+            "UTG+2": { percent: "25.8%", range: "22+, A2s+, A5o+, K7s+, KTo+, Q9s+, QJo, J9s+, T8s+, 98s, 87s" },
+            "UTG+1": { percent: "23.4%", range: "22+, A2s+, A7o+, K8s+, KTo+, Q9s+, QJo, J9s+, T8s+, 98s" },
+            "UTG": { percent: "20.1%", range: "22+, A2s+, A8o+, K9s+, KJo+, Q9s+, J9s+, T9s, 98s" }
+        },
+        "7": {
+            "SB": { percent: "76.2%", range: "22+, Jx+, T2s+, T5o+, 92s+, 96o+, 84s+, 86o+, 73s+, 76o, 63s+, 65o, 53s+, 43s" },
+            "BTN": { percent: "47.2%", range: "22+, Ax, K2s+, K3o+, Q3s+, Q8o+, J6s+, J9o+, T6s+, T9o, 96s+, 86s+, 75s+, 65s, 54s" },
+            "CO": { percent: "38.5%", range: "22+, Ax, K2s+, K7o+, Q6s+, Q9o+, J7s+, JTo, T7s+, 97s+, 86s+, 76s, 65s" },
+            "HJ": { percent: "33.0%", range: "22+, Ax, K5s+, K9o+, Q8s+, QTo+, J8s+, JTo, T8s+, 97s+, 87s, 76s" },
+            "LJ": { percent: "28.2%", range: "22+, A2s+, A4o+, K6s+, KTo+, Q9s+, QTo+, J8s+, T8s+, 98s, 87s" },
+            "UTG+2": { percent: "24.6%", range: "22+, A2s+, A7o+, A5o, K8s+, KTo+, Q9s+, QJo, J9s+, T8s+, 98s, 87s" },
+            "UTG+1": { percent: "21.3%", range: "22+, A2s+, A8o+, K9s+, KJo+, Q9s+, QJo, J9s+, T8s+, 98s" },
+            "UTG": { percent: "18.4%", range: "33+, A3s+, A9o+, K9s+, KJo+, Q9s+, QJo, J9s+, T9s, 98s" }
+        },
+        "8": {
+            "SB": { percent: "74.1%", range: "22+, Qx+, J2s+, J3o+, T2s+, T6o+, 93s+, 96o+, 84s+, 86o+, 73s+, 76o, 63s+, 65o, 53s+, 43s" },
+            "BTN": { percent: "46.0%", range: "22+, Ax, K2s+, K4o+, Q3s+, Q8o+, J7s+, J9o+, T6s+, T9o, 96s+, 86s+, 75s+, 65s, 54s" },
+            "CO": { percent: "35.4%", range: "22+, Ax, K3s+, K9o+, Q6s+, QTo+, J7s+, JTo, T7s+, 97s+, 86s+, 76s, 65s" },
+            "HJ": { percent: "31.5%", range: "22+, Ax, K6s+, KTo+, Q8s+, QTo+, J8s+, JTo, T8s+, 98s, 87s, 76s" },
+            "LJ": { percent: "26.1%", range: "22+, A2s+, A5o+, K7s+, KTo+, Q9s+, QJo, J8s+, T8s+, 98s, 87s" },
+            "UTG+2": { percent: "21.6%", range: "22+, A2s+, A8o+, K9s+, KJo+, Q9s+, QJo, J9s+, T8s+, 98s, 87s" },
+            "UTG+1": { percent: "19.2%", range: "22+, A3s+, A9o+, K9s+, KJo+, Q9s+, QJo, J9s+, T8s+, 98s" },
+            "UTG": { percent: "16.9%", range: "33+, A4s+, ATo+, K9s+, KJo+, Q9s+, QJo, J9s+, T9s" }
+        },
+        "9": {
+            "SB": { percent: "71.9%", range: "22+, Qx+, J2s+, J5o+, T2s+, T6o+, 93s+, 96o+, 84s+, 86o+, 74s+, 76o, 63s+, 65o, 53s+, 43s" },
+            "BTN": { percent: "43.9%", range: "22+, Ax, K2s+, K5o+, Q4s+, Q9o+, J7s+, J9o+, T6s+, T9o, 96s+, 86s+, 75s+, 65s, 54s" },
+            "CO": { percent: "34.2%", range: "22+, Ax, K4s+, K9o+, Q8s+, QTo+, J8s+, JTo, T7s+, 97s+, 86s+, 76s, 65s" },
+            "HJ": { percent: "30.0%", range: "22+, A2s+, A3o+, K7s+, KTo+, Q9s+, QTo+, J8s+, JTo, T8s+, 98s, 87s, 76s" },
+            "LJ": { percent: "24.9%", range: "22+, A2s+, A7o+, A5o, K8s+, KTo+, Q9s+, QJo, J8s+, T8s+, 98s, 87s" },
+            "UTG+2": { percent: "20.4%", range: "22+, A2s+, A9o+, K9s+, KJo+, Q9s+, QJo, J9s+, T8s+, 98s" },
+            "UTG+1": { percent: "17.5%", range: "33+, A3s+, ATo+, K9s+, KJo+, Q9s+, QJo, J9s+, T9s, 98s" },
+            "UTG": { percent: "15.7%", range: "33+, A7s+, A5s-A4s, ATo+, K9s+, KQo, Q9s+, J9s+, T9s" }
+        },
+        "10": {
+            "SB": { percent: "71.0%", range: "22+, Qx+, J2s+, J5o+, T2s+, T7o+, 93s+, 96o+, 84s+, 86o+, 74s+, 76o, 63s+, 65o, 53s+, 43s" },
+            "BTN": { percent: "42.4%", range: "22+, Ax, K2s+, K6o+, Q5s+, Q9o+, J7s+, J9o+, T7s+, T9o, 96s+, 86s+, 75s+, 65s, 54s" },
+            "CO": { percent: "32.7%", range: "22+, Ax, K5s+, KTo+, Q8s+, QTo+, J8s+, JTo, T7s+, 97s+, 86s+, 76s, 54s" },
+            "HJ": { percent: "28.2%", range: "22+, A2s+, A4o+, K7s+, KTo+, Q8s+, QJo, J8s+, JTo, T8s+, 98s, 87s" },
+            "LJ": { percent: "22.2%", range: "22+, A2s+, A8o+, K8s+, KJo+, Q9s+, QJo, J8s+, T8s+, 98s, 87s" },
+            "UTG+2": { percent: "20.1%", range: "22+, A3s+, A9o+, K9s+, KJo+, Q9s+, QJo, J9s+, T8s+, 98s" },
+            "UTG+1": { percent: "16.6%", range: "33+, A7s+, A5s-A4s, ATo+, K9s+, KJo+, Q9s+, J9s+, T9s" },
+            "UTG": { percent: "14.3%", range: "44+, A8s+, ATo+, K9s+, KQo, Q9s+, J9s+, T9s" }
+        },
+        "11": {
+            "SB": { percent: "67.7%", range: "22+, Qx+, J2s+, J7o+, T3s+, T7o+, 94s+, 97o+, 84s+, 86o+, 74s+, 76o, 63s+, 65o, 53s+, 43s" },
+            "BTN": { percent: "39.7%", range: "22+, Ax, K2s+, K8o+, Q5s+, Q9o+, J7s+, JTo, T7s+, T9o, 96s+, 86s+, 75s+, 65s, 54s" },
+            "CO": { percent: "32.7%", range: "22+, Ax, K5s+, KTo+, Q8s+, QTo+, J8s+, JTo, T7s+, 97s+, 86s+, 76s" },
+            "HJ": { percent: "25.8%", range: "22+, A2s+, A7o+, A5o, K8s+, KTo+, Q9s+, QJo, J8s+, JTo, T8s+, 98s, 87s" },
+            "LJ": { percent: "21.0%", range: "22+, A2s+, A9o+, K8s+, KJo+, Q9s+, QJo, J8s+, T8s+, 98s" },
+            "UTG+2": { percent: "17.5%", range: "33+, A3s+, ATo+, K9s+, KJo+, Q9s+, QJo, J9s+, T9s, 98s" },
+            "UTG+1": { percent: "15.1%", range: "33+, A8s+, A5s, ATo+, K9s+, KQo, Q9s+, J9s+, T9s" },
+            "UTG": { percent: "13.4%", range: "44+, A8s+, A5s, AJo+, K9s+, KQo, QTs+, J9s+, T9s" }
+        },
+        "12": {
+            "SB": { percent: "65.6%", range: "22+, Kx+, Q2s+, Q4o+, J2s+, J7o+, T3s+, T7o+, 95s+, 97o+, 84s+, 86o+, 74s+, 76o, 63s+, 65o, 53s+, 43s" },
+            "BTN": { percent: "37.6%", range: "22+, Ax, K2s+, K9o+, Q6s+, QTo+, J7s+, JTo, T7s+, T9o, 96s+, 86s+, 75s+, 65s, 54s" },
+            "CO": { percent: "31.8%", range: "22+, Ax, K6s+, KTo+, Q8s+, QTo+, J8s+, JTo, T8s+, 97s+, 87s, 76s" },
+            "HJ": { percent: "24.9%", range: "22+, A2s+, A7o+, A5o, K8s+, KJo+, Q9s+, QJo, J8s+, JTo, T8s+, 98s, 87s" },
+            "LJ": { percent: "20.4%", range: "22+, A3s+, A9o+, K9s+, KJo+, Q9s+, QJo, J9s+, T8s+, 98s" },
+            "UTG+2": { percent: "16.9%", range: "33+, A7s+, A5s-A4s, ATo+, K9s+, KJo+, Q9s+, QJo, J9s+, T9s, 98s" },
+            "UTG+1": { percent: "14.6%", range: "44+, A8s+, A5s, ATo+, K9s+, KQo, Q9s+, J9s+, T9s" },
+            "UTG": { percent: "12.7%", range: "55+, A8s+, A5s, AJo+, K9s+, KQo, QTs+, JTs, T9s" }
+        },
+        "13": {
+            "SB": { percent: "64.7%", range: "22+, Kx+, Q2s+, Q4o+, J2s+, J7o+, T3s+, T7o+, 95s+, 97o+, 84s+, 86o+, 74s+, 76o, 63s+, 53s+, 43s" },
+            "BTN": { percent: "36.3%", range: "22+, Ax, K4s+, K9o+, Q6s+, QTo+, J7s+, JTo, T7s+, T9o, 96s+, 86s+, 76s, 65s" },
+            "CO": { percent: "29.7%", range: "22+, A2s+, A4o+, K7s+, KTo+, Q8s+, QTo+, J8s+, JTo, T8s+, 97s+, 87s, 76s" },
+            "HJ": { percent: "23.1%", range: "22+, A2s+, A8o+, K8s+, KJo+, Q9s+, QJo, J8s+, JTo, T8s+, 98s, 87s" },
+            "LJ": { percent: "18.3%", range: "22+, A3s+, ATo+, K9s+, KJo+, Q9s+, QJo, J9s+, T8s+, 98s" },
+            "UTG+2": { percent: "15.4%", range: "33+, A7s+, A5s, ATo+, K9s+, KQo, Q9s+, J9s+, T9s" },
+            "UTG+1": { percent: "13.7%", range: "44+, A8s+, A5s, AJo+, K9s+, KQo, Q9s+, J9s+, T9s" },
+            "UTG": { percent: "11.8%", range: "55+, A9s+, A5s, AJo+, KTs+, KQo, QTs+, JTs" }
+        },
+        "14": {
+            "SB": { percent: "61.7%", range: "22+, Kx+, Q2s+, Q5o+, J2s+, J8o+, T4s+, T7o+, 95s+, 97o+, 84s+, 87o, 74s+, 76o, 63s+, 53s+, 43s" },
+            "BTN": { percent: "36.7%", range: "22+, Ax, K4s+, K9o+, Q6s+, QTo+, J7s+, JTo, T7s+, T9o, 96s+, 86s+, 75s+, 65s" },
+            "CO": { percent: "29.4%", range: "22+, A2s+, A4o+, K7s+, KTo+, Q8s+, QTo+, J8s+, JTo, T8s+, 97s+, 87s" },
+            "HJ": { percent: "21.3%", range: "22+, A2s+, A9o+, K8s+, KJo+, Q9s+, QJo, J8s+, JTo, T8s+, 98s, 87s" },
+            "LJ": { percent: "18.4%", range: "33+, A3s+, ATo+, K9s+, KJo+, Q9s+, QJo, J9s+, T9s, 98s" },
+            "UTG+2": { percent: "14.6%", range: "44+, A8s+, A5s, ATo+, K9s+, KQo, Q9s+, J9s+, T9s" },
+            "UTG+1": { percent: "12.8%", range: "44+, A9s+, A5s, AJo+, K9s+, KQo, QTs+, JTs" },
+            "UTG": { percent: "10.9%", range: "55+, A9s+, A5s, AJo+, KTs+, QTs+, JTs" }
+        },
+        "15": {
+            "SB": { percent: "60.2%", range: "22+, Kx+, Q2s+, Q6o+, J3s+, J8o+, T4s+, T7o+, 95s+, 97o+, 84s+, 87o, 74s+, 76o, 64s+, 53s+, 43s" },
+            "BTN": { percent: "36.0%", range: "22+, Ax, K4s+, K9o+, Q8s+, Q6s, QTo+, J7s+, JTo, T7s+, T9o, 96s+, 86s+, 76s, 65s" },
+            "CO": { percent: "27.9%", range: "22+, A2s+, A5o+, K8s+, KTo+, Q8s+, QTo+, J8s+, JTo, T8s+, 98s, 87s" },
+            "HJ": { percent: "21.3%", range: "22+, A2s+, A9o+, K8s+, K9s+, KQo, Q9s+, QJo, J8s+, T8s+, 98s, 87s" },
+            "LJ": { percent: "16.6%", range: "33+, A7s+, A5s-A4s, ATo+, K9s+, KJo+, Q9s+, J9s+, T9s" },
+            "UTG+2": { percent: "13.7%", range: "44+, A8s+, A5s, AJo+, KTs+, QTs+, Q9s+, J9s+, T9s" },
+            "UTG+1": { percent: "11.8%", range: "55+, A9s+, A5s, AJo+, KTs+, KQo, QTs+, JTs" },
+            "UTG": { percent: "9.8%", range: "66+, A9s+, A5s-A4s, AQo+, KTs+, QTs+, JTs" }
+        }
+    };
+
+    // --- 1. 13x13 그리드 렌더링 ---
+    const gridEl = document.getElementById('range-grid');
+    for (let i = 0; i < 13; i++) {
+        for (let j = 0; j < 13; j++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            let hand = '';
+            
+            if (i === j) { // 포켓 페어
+                hand = ranks[i] + ranks[j];
+                cell.classList.add('pair');
+            } else if (i < j) { // 수딧
+                hand = ranks[i] + ranks[j] + 's';
+                cell.classList.add('suited');
+            } else { // 오프수딧
+                hand = ranks[j] + ranks[i] + 'o';
+                cell.classList.add('offsuit');
+            }
+            
+            cell.id = 'cell-' + hand;
+            cell.textContent = hand;
+            gridEl.appendChild(cell);
+        }
+    }
+
+    // --- 2. 텍스트 레인지 파싱 알고리즘 ---
+    function getActiveHands(rangeStr) {
+        const hands = new Set();
+        if (!rangeStr) return hands;
+
+        const cleanStr = rangeStr.toLowerCase();
+        
+        // "Any Two"일 경우 169 핸드 전체 추가
+        if (cleanStr.includes("any two")) {
+            for (let i = 0; i < 13; i++) {
+                for (let j = 0; j < 13; j++) {
+                    if (i === j) hands.add(ranks[i] + ranks[j]);
+                    else if (i < j) hands.add(ranks[i] + ranks[j] + 's');
+                    else hands.add(ranks[j] + ranks[i] + 'o');
+                }
+            }
+            return hands;
+        }
+
+        // 공백이나 콤마로 토큰 분리
+        const tokens = rangeStr.replace(/\./g, ',').split(/[\s,]+/);
+
+        tokens.forEach(token => {
+            if (!token) return;
+            const t = token.toUpperCase().replace(/S/g, 's').replace(/O/g, 'o');
+            
+            // 1. 포켓 페어 레인지 (예: 22+, 88+)
+            if (t.match(/^([AKQJT98765432])\1\+$/i)) {
+                const startIdx = ranks.indexOf(t[0]);
+                for (let i = startIdx; i >= 0; i--) {
+                    hands.add(ranks[i] + ranks[i]);
+                }
+            }
+            // 2. 특정 카드 포함 레인지 (예: Ax, Kx+)
+            else if (t.match(/^[AKQJT98765432]x\+?$/i)) {
+                const isPlus = t.endsWith('+');
+                const startIdx = ranks.indexOf(t[0]);
+                const endIdx = isPlus ? 0 : startIdx;
+                for (let i = startIdx; i >= endIdx; i--) {
+                    const r1 = ranks[i];
+                    hands.add(r1 + r1);
+                    for (let j = i + 1; j < 13; j++) {
+                        hands.add(r1 + ranks[j] + 's');
+                        hands.add(r1 + ranks[j] + 'o');
+                    }
+                }
+            }
+            // 3. 수딧/오프수딧 레인지 (예: K5s+, QTo+)
+            else if (t.match(/^[AKQJT98765432]{2}[so]\+$/i)) {
+                const r1 = t[0], r2 = t[1], suit = t[2];
+                const r1Idx = ranks.indexOf(r1);
+                const r2Idx = ranks.indexOf(r2);
+                for (let j = r2Idx; j > r1Idx; j--) {
+                    hands.add(r1 + ranks[j] + suit);
+                }
+            }
+            // 4. 구간 지정 레인지 (예: A5s-A4s)
+            else if (t.includes('-')) {
+                const parts = t.split('-');
+                if (parts.length === 2 && parts[0].length === 3 && parts[1].length === 3) {
+                    const r1 = parts[0][0], suit = parts[0][2];
+                    const idx1 = ranks.indexOf(parts[0][1]);
+                    const idx2 = ranks.indexOf(parts[1][1]);
+                    const min = Math.min(idx1, idx2), max = Math.max(idx1, idx2);
+                    for (let j = min; j <= max; j++) {
+                        hands.add(r1 + ranks[j] + suit);
+                    }
+                }
+            }
+            // 5. 단일 핸드 지정 (예: 98s, AKo, 77)
+            else if (t.match(/^[AKQJT98765432]{2}[so]?$/i)) {
+                hands.add(t);
+            }
+        });
+        return hands;
+    }
+
+    // --- 3. UI 업데이트 ---
+    const bbSelect = document.getElementById('bb-select');
+    const posSelect = document.getElementById('pos-select');
+    const percentDisplay = document.getElementById('percentage-display');
+    const errorMsg = document.getElementById('error-msg');
+    const rangeText = document.getElementById('range-text');
+
+    function updateChart() {
+        // 기존 초록불 초기화
+        document.querySelectorAll('.cell.active').forEach(el => el.classList.remove('active'));
+        
+        const bb = bbSelect.value;
+        const pos = posSelect.value;
+        const data = chartData[bb] && chartData[bb][pos];
+
+        if (data) {
+            percentDisplay.textContent = data.percent;
+            rangeText.textContent = data.range;
+            errorMsg.style.display = 'none';
+            rangeText.style.display = 'block';
+            
+            // 파싱된 핸드에 초록불 켜기
+            const activeHands = getActiveHands(data.range);
+            activeHands.forEach(hand => {
+                const cell = document.getElementById('cell-' + hand);
+                if (cell) cell.classList.add('active');
+            });
+        } else {
+            percentDisplay.textContent = '-';
+            rangeText.style.display = 'none';
+            errorMsg.style.display = 'block';
+        }
+    }
+
+    bbSelect.addEventListener('change', updateChart);
+    posSelect.addEventListener('change', updateChart);
+
+    updateChart();
+</script>
+</body>
+</html>
