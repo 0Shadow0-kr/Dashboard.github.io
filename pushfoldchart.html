@@ -25,16 +25,43 @@
             width: 100%;
             max-width: 600px;
         }
-        h1 {
+        
+        /* 돌아가기 버튼과 헤더를 위한 레이아웃 */
+        .header-container {
+            position: relative;
             text-align: center;
-            color: #4CAF50;
             margin-bottom: 5px;
+        }
+        .btn-back {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            display: inline-block;
+            background-color: #333;
+            color: #fff;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 6px;
+            text-decoration: none;
+            border: 1px solid #555;
+            transition: 0.2s;
+        }
+        .btn-back:hover {
+            background-color: #555;
+        }
+
+        h1 {
+            margin: 0;
+            color: #4CAF50;
             font-size: 1.5em;
         }
         p.subtitle {
             text-align: center;
             color: #888;
             font-size: 0.9em;
+            margin-top: 5px;
             margin-bottom: 20px;
         }
         .controls {
@@ -134,7 +161,10 @@
 <body>
 
 <div class="container">
-    <h1>13x13 푸쉬/폴드 레인지</h1>
+    <div class="header-container">
+        <a href="tournament.html" class="btn-back">⬅️ 뒤로</a>
+        <h1>13x13 푸쉬/폴드 레인지</h1>
+    </div>
     <p class="subtitle">10% Antes (이미지 데이터 기준 완벽 패치)</p>
 
     <div class="controls">
@@ -179,7 +209,6 @@
 <script>
     const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
 
-    // 올려주신 이미지를 바탕으로 재작성한 완벽한 데이터베이스
     const chartData = {
         "1": {
             "SB": { percent: "100.0%", range: "Any Two" },
