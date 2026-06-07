@@ -205,7 +205,56 @@
         .btn-reset-all:hover { color: #fff; border-color: #888; }
 
         .edit-input { background: #1a1a1a; color: #fff; border: 1px solid var(--accent); border-radius: 4px; padding: 6px; font-family: 'Pretendard', sans-serif; font-size: 13px; box-sizing: border-box; text-align: center; width: 100%; }
+@media (max-width: 768px) {
+            body { padding: 10px; }
+            
+            /* 네비게이션: 가로 유지는 하되 여백과 폰트 크기 축소 */
+            .nav-bar { gap: 8px; margin-bottom: 15px; }
+            .nav-btn { padding: 12px 8px; font-size: 14px; }
 
+            /* 헤더 영역: 제목과 저장 버튼 세로 배치 */
+            .header { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .header .btn-rename { margin-left: 0; width: 100%; padding: 12px; font-size: 15px; box-sizing: border-box; }
+
+            /* 프리셋(장부) 영역: 전체 너비 사용 및 세로 배치 */
+            .preset-section { width: 100%; flex-direction: column; align-items: stretch; gap: 10px; box-sizing: border-box; padding: 15px; }
+            .preset-section select { width: 100%; text-align: center; }
+            .preset-section .btn-rename { width: 100%; padding: 10px; }
+
+            /* 계산기 및 입력 영역 */
+            .calculator-section { padding: 15px; }
+            .calc-header { flex-direction: column; gap: 15px; }
+            .input-group { width: 100%; min-width: auto; box-sizing: border-box; }
+            
+            /* 기존 스플릿 섹션 세로 배치 */
+            .split-section { flex-direction: column; gap: 15px; margin-bottom: 15px; }
+
+            /* 액션 버튼 그룹: 모바일에서는 누르기 쉽게 세로로 꽉 차게 배치 */
+            .btn-action-group { flex-direction: column; gap: 10px; }
+            button, .btn-clear-calc { width: 100%; min-width: auto; margin: 0; padding: 14px; }
+
+            /* 요약 카드: 2열 그리드로 변경하여 공간 최적화 */
+            .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
+            .card { padding: 15px 10px; }
+            .card p { font-size: 18px; }
+
+            /* 차트 영역: 1열로 변경 및 높이 조정 */
+            .chart-row { grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; }
+            .chart-container, .chart-full { height: 280px; padding: 10px; }
+
+            /* 테이블 및 데이터 리스트 영역 */
+            .data-table-container { padding: 15px; }
+            .data-table-container h3 { display: block; text-align: center; margin-bottom: 15px; width: 100%; }
+            .btn-reset-all { float: none; display: block; width: 100%; padding: 12px; text-align: center; margin-bottom: 15px; font-size: 14px; border: 1px solid #cf6679; color: #cf6679; }
+            
+            /* 테이블 내부 여백 및 폰트 축소 (가로 스크롤은 유지됨) */
+            th, td { font-size: 12px; padding: 10px 5px; white-space: nowrap; }
+            th:last-child, td:last-child { width: auto; min-width: 90px; }
+            
+            /* 수정/삭제 버튼 컨테이너 최적화 */
+            .action-btns { gap: 4px; }
+            .btn-edit, .btn-delete, .btn-save-edit, .btn-cancel-edit { padding: 8px 0; font-size: 11px; }
+        }
     </style>
 
 </head>
