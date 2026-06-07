@@ -66,8 +66,8 @@
 
         .btn-action-group { display: flex; gap: 10px; flex-wrap: wrap; }
         button { flex: 1; padding: 15px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; min-width: 150px; }
-        .btn-add-new { background-color: var(--win-color); color: #000; border: 2px solid #000; }
-        .btn-add-new:hover { filter: brightness(0.9); }
+        .btn-add-merge { background-color: #ffb74d; color: #000; }
+        .btn-add-merge:hover { filter: brightness(0.9); }
         .btn-save { background-color: var(--accent); color: #000; }
         .btn-save:hover { filter: brightness(0.9); }
         .btn-clear-calc { background-color: #444; color: #fff; flex: 0.3; min-width: 100px; }
@@ -165,7 +165,8 @@
         </div>
 
         <div class="btn-action-group">
-            <button class="btn-save" onclick="saveToDashboard('new')">💾 새 데이터 저장</button>
+            <button class="btn-add-merge" onclick="saveToDashboard('merge')">📥 기존 날짜에 합산</button>
+            <button class="btn-save" onclick="saveToDashboard('overwrite')">💾 새로 덮어쓰기 (수정)</button>
             <button class="btn-clear-calc" onclick="clearCalculator()">입력창 비우기</button>
         </div>
     </div>
@@ -314,11 +315,21 @@
 
         const storageKey = getStorageKey();
         let pokerData = JSON.parse(localStorage.getItem(storageKey)) || [];
-        
-        // 새로 무조건 추가 (중복 방지 없이 독립 행으로 저장)
-        pokerData.push({ id: Date.now() + Math.random(), date: dateStr, hands: finalHands, dailyProfit: finalProfit, bbSize: finalBBSize });
-        pokerData.sort((a, b) => new Date(a.date) - new Date(b.date));
+        pokerData = pokerData.map(item => ({ ...item, id: item.id || Date.now() + Math.random(), bbSize: item.bbSize || 2000 }));
 
+        if (mode === 'merge') {
+            let existingIndex = pokerData.findIndex(item => item.date === dateStr && item.bbSize === finalBBSize);
+            if (existingIndex !== -1) {
+                pokerData[existingIndex].hands += finalHands;
+                pokerData[existingIndex].dailyProfit += finalProfit;
+            } else {
+                pokerData.push({ id: Date.now() + Math.random(), date: dateStr, hands: finalHands, dailyProfit: finalProfit, bbSize: finalBBSize });
+            }
+        } else {
+            pokerData.push({ id: Date.now() + Math.random(), date: dateStr, hands: finalHands, dailyProfit: finalProfit, bbSize: finalBBSize });
+        }
+
+        pokerData.sort((a, b) => new Date(a.date) - new Date(b.date));
         localStorage.setItem(storageKey, JSON.stringify(pokerData));
         updateDashboard();
         clearCalculator();
@@ -373,13 +384,11 @@
         const tbody = document.getElementById('dataTableBody'); tbody.innerHTML = '';
 
         data.forEach((row, index) => {
-            const sessionBBSize = row.bbSize || 2000;
             totalHands += row.hands;
             totalProfit += row.dailyProfit;
             
-            let sessionBBEarned = sessionBBSize > 0 ? row.dailyProfit / sessionBBSize : 0;
-            let dynamicBB100 = (row.hands > 0 && sessionBBSize > 0) ? (sessionBBEarned / row.hands) * 100 : 0;
-            
+            let sessionBBEarned = row.bbSize > 0 ? row.dailyProfit / row.bbSize : 0;
+            let dynamicBB100 = (row.hands > 0 && row.bbSize > 0) ? (sessionBBEarned / row.hands) * 100 : 0;
             totalBBEarned += sessionBBEarned;
 
             labels.push(row.date);
@@ -391,7 +400,7 @@
             if (editingId === row.id) {
                 tr.innerHTML = `
                     <td><input type="text" id="edit-date-${row.id}" class="edit-input" value="${row.date}"></td>
-                    <td><input type="number" id="edit-bb-${row.id}" class="edit-input" value="${sessionBBSize}"></td>
+                    <td><input type="number" id="edit-bb-${row.id}" class="edit-input" value="${row.bbSize}"></td>
                     <td><input type="number" id="edit-hands-${row.id}" class="edit-input" value="${row.hands}"></td>
                     <td style="color:#555;">-</td>
                     <td><input type="number" id="edit-profit-${row.id}" class="edit-input" value="${row.dailyProfit}"></td>
@@ -401,7 +410,7 @@
             } else {
                 tr.innerHTML = `
                     <td>${row.date}</td>
-                    <td>${sessionBBSize.toLocaleString()}</td>
+                    <td style="color: #b3b3b3;">${row.bbSize.toLocaleString()}</td>
                     <td>${row.hands.toLocaleString()}</td>
                     <td class="${dynamicBB100 >= 0 ? 'positive' : 'negative'}">${dynamicBB100.toFixed(2)}</td>
                     <td class="${row.dailyProfit >= 0 ? 'positive' : 'negative'}">${row.dailyProfit.toLocaleString()}</td>
@@ -414,20 +423,16 @@
 
         document.getElementById('totHands').innerText = totalHands.toLocaleString();
         document.getElementById('totBB').innerText = totalBBEarned.toFixed(2);
-        document.getElementById('totBB').className = totalBBEarned >= 0 ? 'positive' : 'negative';
         document.getElementById('avgBB').innerText = (totalHands > 0 ? (totalBBEarned / totalHands) * 100 : 0).toFixed(2);
         document.getElementById('totProfit').innerText = totalProfit.toLocaleString();
 
         if(profitChart) profitChart.destroy(); if(bb100Chart) bb100Chart.destroy(); if(dailyProfitChart) dailyProfitChart.destroy();
 
-        const ctx1 = document.getElementById('profitChart').getContext('2d');
-        profitChart = new Chart(ctx1, { type: 'line', data: { labels: labels, datasets: [{ label: '누적 수익 (화폐)', data: cumProfitData, borderColor: '#bb86fc', backgroundColor: 'rgba(187, 134, 252, 0.1)', borderWidth: 3, fill: true, tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false } });
+        Chart.defaults.color = '#b3b3b3'; Chart.defaults.font.family = 'Pretendard';
         
-        const ctx2 = document.getElementById('bb100Chart').getContext('2d');
-        bb100Chart = new Chart(ctx2, { type: 'bar', data: { labels: labels, datasets: [{ label: '해당 세션 BB/100', data: bb100Data, backgroundColor: bb100Data.map(val => val >= 0 ? 'rgba(3, 218, 198, 0.7)' : 'rgba(207, 102, 121, 0.7)'), borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false } });
-        
-        const ctx3 = document.getElementById('dailyProfitChart').getContext('2d');
-        dailyProfitChart = new Chart(ctx3, { type: 'bar', data: { labels: labels, datasets: [{ label: '당일 수익 (화폐)', data: dailyProfitData, backgroundColor: dailyProfitData.map(val => val >= 0 ? 'rgba(3, 218, 198, 0.7)' : 'rgba(207, 102, 121, 0.7)'), borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false } });
+        new Chart(document.getElementById('profitChart').getContext('2d'), { type: 'line', data: { labels: labels, datasets: [{ label: '누적 수익', data: cumProfitData, borderColor: '#bb86fc', backgroundColor: 'rgba(187, 134, 252, 0.1)', borderWidth: 3, fill: true, tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false } });
+        new Chart(document.getElementById('bb100Chart').getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ label: 'BB/100', data: bb100Data, backgroundColor: bb100Data.map(v => v >= 0 ? '#03dac6' : '#cf6679') }] }, options: { responsive: true, maintainAspectRatio: false } });
+        new Chart(document.getElementById('dailyProfitChart').getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ label: '당일 수익', data: dailyProfitData, backgroundColor: dailyProfitData.map(v => v >= 0 ? '#03dac6' : '#cf6679') }] }, options: { responsive: true, maintainAspectRatio: false } });
     }
 </script>
 </body>
