@@ -29,8 +29,6 @@
         
         .btn-rename { background-color: #333; color: #fff; padding: 8px 12px; font-size: 13px; font-weight: bold; border-radius: 6px; border: 1px solid #555; cursor: pointer; transition: 0.2s; min-width: auto; flex: none; }
         .btn-rename:hover { background-color: #555; }
-        .btn-chart { background-color: #4CAF50; color: #fff; padding: 8px 15px; font-size: 13px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: 0.2s; text-decoration: none; margin-left: auto; }
-        .btn-chart:hover { filter: brightness(0.9); }
 
         .calculator-section { background-color: var(--card-bg); padding: 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .calc-header { display: flex; gap: 20px; margin-bottom: 15px; flex-wrap: wrap; }
@@ -127,7 +125,6 @@
             <option value="wplData_preset4">프리셋 4</option>
         </select>
         <button class="btn-rename" onclick="renamePreset()">이름 변경</button>
-        <a href="pushfoldchart.html" class="btn-chart">📊 푸쉬/폴드 차트 열기</a>
     </div>
 
     <div class="calculator-section">
@@ -165,8 +162,8 @@
         </div>
 
         <div class="btn-action-group">
-            <button class="btn-add-merge" onclick="saveToDashboard('merge')">📥 기존 날짜에 합산</button>
-            <button class="btn-save" onclick="saveToDashboard('overwrite')">💾 새로 덮어쓰기 (수정)</button>
+            <button class="btn-save" onclick="saveToDashboard('new')">💾 새 데이터 저장</button>
+            <button class="btn-add-merge" onclick="saveToDashboard('merge')">📥 기존 날짜/방에 합산</button>
             <button class="btn-clear-calc" onclick="clearCalculator()">입력창 비우기</button>
         </div>
     </div>
@@ -315,8 +312,7 @@
 
         const storageKey = getStorageKey();
         let pokerData = JSON.parse(localStorage.getItem(storageKey)) || [];
-        pokerData = pokerData.map(item => ({ ...item, id: item.id || Date.now() + Math.random(), bbSize: item.bbSize || 2000 }));
-
+        
         if (mode === 'merge') {
             let existingIndex = pokerData.findIndex(item => item.date === dateStr && item.bbSize === finalBBSize);
             if (existingIndex !== -1) {
@@ -423,15 +419,18 @@
 
         document.getElementById('totHands').innerText = totalHands.toLocaleString();
         document.getElementById('totBB').innerText = totalBBEarned.toFixed(2);
+        document.getElementById('totBB').className = totalBBEarned >= 0 ? 'positive' : 'negative';
         document.getElementById('avgBB').innerText = (totalHands > 0 ? (totalBBEarned / totalHands) * 100 : 0).toFixed(2);
+        document.getElementById('avgBB').className = (totalHands > 0 && totalBBEarned >= 0) ? 'positive' : (totalHands > 0 ? 'negative' : '');
         document.getElementById('totProfit').innerText = totalProfit.toLocaleString();
+        document.getElementById('totProfit').className = totalProfit >= 0 ? 'positive' : 'negative';
 
         if(profitChart) profitChart.destroy(); if(bb100Chart) bb100Chart.destroy(); if(dailyProfitChart) dailyProfitChart.destroy();
 
         Chart.defaults.color = '#b3b3b3'; Chart.defaults.font.family = 'Pretendard';
         
         new Chart(document.getElementById('profitChart').getContext('2d'), { type: 'line', data: { labels: labels, datasets: [{ label: '누적 수익', data: cumProfitData, borderColor: '#bb86fc', backgroundColor: 'rgba(187, 134, 252, 0.1)', borderWidth: 3, fill: true, tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false } });
-        new Chart(document.getElementById('bb100Chart').getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ label: 'BB/100', data: bb100Data, backgroundColor: bb100Data.map(v => v >= 0 ? '#03dac6' : '#cf6679') }] }, options: { responsive: true, maintainAspectRatio: false } });
+        new Chart(document.getElementById('bb100Chart').getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ label: '해당 세션 BB/100', data: bb100Data, backgroundColor: bb100Data.map(v => v >= 0 ? '#03dac6' : '#cf6679') }] }, options: { responsive: true, maintainAspectRatio: false } });
         new Chart(document.getElementById('dailyProfitChart').getContext('2d'), { type: 'bar', data: { labels: labels, datasets: [{ label: '당일 수익', data: dailyProfitData, backgroundColor: dailyProfitData.map(v => v >= 0 ? '#03dac6' : '#cf6679') }] }, options: { responsive: true, maintainAspectRatio: false } });
     }
 </script>
