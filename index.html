@@ -64,7 +64,7 @@
 
         .btn-action-group { display: flex; gap: 10px; flex-wrap: wrap; }
         button { flex: 1; padding: 15px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; min-width: 150px; }
-        .btn-add-merge { background-color: #ffb74d; color: #000; }
+        .btn-add-merge { background-color: var(--win-color); color: #000; }
         .btn-add-merge:hover { filter: brightness(0.9); }
         .btn-save { background-color: var(--accent); color: #000; }
         .btn-save:hover { filter: brightness(0.9); }
@@ -139,7 +139,7 @@
                     <label for="bbInputBase">방 BB 크기</label>
                     <input type="number" id="bbInputBase" placeholder="숫자만 입력" oninput="calculateBB()" style="flex: 1; min-width: 80px;">
                     <div class="unit-group">
-                        <button type="button" class="unit-btn active" data-unit="1" onclick="setUnit(this, 1)">0</button>
+                        <button type="button" class="unit-btn active" data-unit="1" onclick="setUnit(this, 1)">x</button>
                         <button type="button" class="unit-btn" data-unit="1000" onclick="setUnit(this, 1000)">K</button>
                         <button type="button" class="unit-btn" data-unit="1000000" onclick="setUnit(this, 1000000)">M</button>
                     </div>
@@ -162,9 +162,9 @@
         </div>
 
         <div class="btn-action-group">
-            <button class="btn-save" onclick="saveToDashboard('new')">💾 새 데이터 저장</button>
-            <button class="btn-add-merge" onclick="saveToDashboard('merge')">📥 기존 날짜/방에 합산</button>
-            <button class="btn-clear-calc" onclick="clearCalculator()">입력창 비우기</button>
+            <button class="btn-add-merge" onclick="saveToDashboard('merge')">➕ 당일 기록에 합산</button>
+            <button class="btn-save" onclick="saveToDashboard('overwrite')">💾 새로 덮어쓰기 (수정)</button>
+            <button class="btn-clear-calc" onclick="clearCalculator()">입력창 초기화</button>
         </div>
     </div>
 
@@ -172,7 +172,7 @@
         <div class="card"><h3>총 플레이 핸드</h3><p id="totHands">0</p></div>
         <div class="card"><h3>총 누적 BB 수익</h3><p id="totBB">0.00</p></div>
         <div class="card"><h3>통합 BB/100</h3><p id="avgBB">0.00</p></div>
-        <div class="card"><h3>총 누적 수익</h3><p id="totProfit">0</p></div>
+        <div class="card"><h3>총 누적 수익 (화폐)</h3><p id="totProfit">0</p></div>
     </div>
 
     <div class="chart-row" style="margin-bottom: 20px;">
@@ -189,8 +189,8 @@
                     <th>방 BB 크기</th>
                     <th>핸드 수</th>
                     <th>해당 세션 BB/100</th>
-                    <th>수익</th>
-                    <th>누적 수익</th>
+                    <th>수익 (화폐)</th>
+                    <th>누적 수익 (화폐)</th>
                     <th style="text-align:center; width: 120px;">관리</th>
                 </tr>
             </thead>
@@ -313,19 +313,30 @@
         const storageKey = getStorageKey();
         let pokerData = JSON.parse(localStorage.getItem(storageKey)) || [];
         
-        if (mode === 'merge') {
-            let existingIndex = pokerData.findIndex(item => item.date === dateStr && item.bbSize === finalBBSize);
-            if (existingIndex !== -1) {
+        // 날짜와 BB크기가 완전히 동일한 기존 데이터 인덱스 찾기
+        let existingIndex = pokerData.findIndex(item => item.date === dateStr && item.bbSize === finalBBSize);
+
+        if (existingIndex !== -1) {
+            // 동일 날짜, 동일 BB가 이미 존재할 경우
+            if (mode === 'merge') {
                 pokerData[existingIndex].hands += finalHands;
                 pokerData[existingIndex].dailyProfit += finalProfit;
-            } else {
-                pokerData.push({ id: Date.now() + Math.random(), date: dateStr, hands: finalHands, dailyProfit: finalProfit, bbSize: finalBBSize });
+            } else if (mode === 'overwrite') {
+                pokerData[existingIndex].hands = finalHands;
+                pokerData[existingIndex].dailyProfit = finalProfit;
             }
         } else {
+            // 동일 날짜/동일 BB가 없을 경우 (스플릿) 무조건 새 행으로 추가
             pokerData.push({ id: Date.now() + Math.random(), date: dateStr, hands: finalHands, dailyProfit: finalProfit, bbSize: finalBBSize });
         }
 
-        pokerData.sort((a, b) => new Date(a.date) - new Date(b.date));
+        // 정렬 기준: 1순위 날짜(오름차순), 2순위 BB 크기(오름차순)
+        pokerData.sort((a, b) => {
+            const dateDiff = new Date(a.date) - new Date(b.date);
+            if (dateDiff !== 0) return dateDiff;
+            return a.bbSize - b.bbSize;
+        });
+        
         localStorage.setItem(storageKey, JSON.stringify(pokerData));
         updateDashboard();
         clearCalculator();
@@ -346,7 +357,12 @@
         
         if (index !== -1) {
             pokerData[index] = { ...pokerData[index], date: dateInput, bbSize: bbInput, hands: handsInput, dailyProfit: profitInput };
-            pokerData.sort((a, b) => new Date(a.date) - new Date(b.date));
+            // 정렬 유지
+            pokerData.sort((a, b) => {
+                const dateDiff = new Date(a.date) - new Date(b.date);
+                if (dateDiff !== 0) return dateDiff;
+                return a.bbSize - b.bbSize;
+            });
             localStorage.setItem(storageKey, JSON.stringify(pokerData));
         }
         editingId = null;
@@ -387,7 +403,17 @@
             let dynamicBB100 = (row.hands > 0 && row.bbSize > 0) ? (sessionBBEarned / row.hands) * 100 : 0;
             totalBBEarned += sessionBBEarned;
 
-            labels.push(row.date);
+            // 라벨 표시 (같은 날짜에 여러 BB가 있으면 날짜에 BB크기를 붙여서 그래프에서 구분되도록)
+            let chartLabel = row.date;
+            if (row.bbSize > 0) {
+                // BB 단위가 너무 길면 줄여서 표시 (예: 200000 -> 200K)
+                let bbStr = row.bbSize;
+                if(row.bbSize >= 1000000) bbStr = (row.bbSize/1000000) + 'M';
+                else if (row.bbSize >= 1000) bbStr = (row.bbSize/1000) + 'K';
+                chartLabel += ` (${bbStr})`;
+            }
+
+            labels.push(chartLabel);
             cumProfitData.push(totalProfit);
             bb100Data.push(dynamicBB100);
             dailyProfitData.push(row.dailyProfit);
@@ -406,7 +432,7 @@
             } else {
                 tr.innerHTML = `
                     <td>${row.date}</td>
-                    <td style="color: #b3b3b3;">${row.bbSize.toLocaleString()}</td>
+                    <td style="color: #b3b3b3;">${row.bbSize ? row.bbSize.toLocaleString() : '0'}</td>
                     <td>${row.hands.toLocaleString()}</td>
                     <td class="${dynamicBB100 >= 0 ? 'positive' : 'negative'}">${dynamicBB100.toFixed(2)}</td>
                     <td class="${row.dailyProfit >= 0 ? 'positive' : 'negative'}">${row.dailyProfit.toLocaleString()}</td>
