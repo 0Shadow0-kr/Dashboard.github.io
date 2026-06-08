@@ -953,17 +953,30 @@
 
 
 
-        if(profitChart) profitChart.destroy(); if(bb100Chart) bb100Chart.destroy(); if(dailyProfitChart) dailyProfitChart.destroy();
+       if(profitChart) profitChart.destroy(); 
+        if(bb100Chart) bb100Chart.destroy(); 
+        if(dailyProfitChart) dailyProfitChart.destroy();
 
-
-
-        Chart.defaults.color = '#b3b3b3'; Chart.defaults.font.family = 'Pretendard';
-
+        Chart.defaults.color = '#b3b3b3'; 
+        Chart.defaults.font.family = 'Pretendard';
         
+        profitChart = new Chart(document.getElementById('profitChart').getContext('2d'), { 
+            type: 'line', 
+            data: { labels: labels, datasets: [{ label: '누적 수익', data: cumProfitData, borderColor: '#bb86fc', backgroundColor: 'rgba(187, 134, 252, 0.1)', borderWidth: 3, fill: true, tension: 0.1 }] }, 
+            options: { responsive: true, maintainAspectRatio: false } 
+        });
 
-        profitChart = new Chart(document.getElementById('profitChart').getContext('2d'), { type: 'line', /* ...생략... */ });
-        bb100Chart = new Chart(document.getElementById('bb100Chart').getContext('2d'), { type: 'bar', /* ...생략... */ });
-        dailyProfitChart = new Chart(document.getElementById('dailyProfitChart').getContext('2d'), { type: 'bar', /* ...생략... */ });
+        bb100Chart = new Chart(document.getElementById('bb100Chart').getContext('2d'), { 
+            type: 'bar', 
+            data: { labels: labels, datasets: [{ label: '해당 세션 BB/100', data: bb100Data, backgroundColor: bb100Data.map(v => v >= 0 ? '#03dac6' : '#cf6679') }] }, 
+            options: { responsive: true, maintainAspectRatio: false } 
+        });
+
+        dailyProfitChart = new Chart(document.getElementById('dailyProfitChart').getContext('2d'), { 
+            type: 'bar', 
+            data: { labels: labels, datasets: [{ label: '당일 수익', data: dailyProfitData, backgroundColor: dailyProfitData.map(v => v >= 0 ? '#03dac6' : '#cf6679') }] }, 
+            options: { responsive: true, maintainAspectRatio: false } 
+        });
     }
 window.exportAllPresets = function() {
     const keys = ['wplData', 'wplData_preset2', 'wplData_preset3', 'wplData_preset4'];
