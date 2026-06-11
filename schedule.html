@@ -151,6 +151,31 @@
     </table>
 
     <script>
+        // 상금을 만, 억 단위로 변환해 주는 함수
+        function formatKoreanCurrency(numStr) {
+            if (!numStr || numStr === '-') return numStr;
+            let num = parseInt(numStr.replace(/,/g, ''), 10);
+            if (isNaN(num)) return numStr;
+            if (num === 0) return "0";
+
+            let eok = Math.floor(num / 100000000);
+            let man = Math.floor((num % 100000000) / 10000);
+            let remainder = num % 10000;
+
+            let result = "";
+            if (eok > 0) {
+                result += eok.toLocaleString() + "억 ";
+            }
+            if (man > 0) {
+                result += man.toLocaleString() + "만";
+            }
+            if (eok === 0 && man === 0 && remainder > 0) {
+                result += remainder.toLocaleString();
+            }
+            
+            return result.trim();
+        }
+
         // 원본 데이터 배열
         const rawData = [
             ["매일", "00:00", "비기너스 4억 GTD", "NLH", "700,000", "400,000,000"],
@@ -282,15 +307,18 @@
         const tournaments = rawData.map(row => {
             let buyInRaw = row[4].replace(/,/g, ''); 
             let buyInValue = buyInRaw === '-' ? 0 : parseInt(buyInRaw, 10); 
+            
+            // 상금 포맷 변환
+            let formattedPrize = formatKoreanCurrency(row[5]);
 
             return {
                 schedule: row[0],
                 time: row[1],
                 name: row[2],
                 type: row[3],
-                buyInString: row[4],
+                buyInString: formatKoreanCurrency(row[4]), // 바이인도 변환 적용
                 buyInValue: buyInValue,
-                prize: row[5]
+                prize: formattedPrize
             };
         });
 
@@ -301,7 +329,7 @@
             tableBody.innerHTML = '';
             
             if (data.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="6">해당 조건에 맞는 토너먼트가 없습니다.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5">해당 조건에 맞는 토너먼트가 없습니다.</td></tr>';
                 return;
             }
 
