@@ -139,8 +139,6 @@
     <table>
         <thead>
             <tr>
-                <th>일정</th>
-                <th>시간</th>
                 <th>토너먼트명</th>
                 <th>타입</th>
                 <th>바이인</th>
@@ -309,7 +307,6 @@
             data.forEach(t => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${t.schedule}</td>
                     <td>${t.time}</td>
                     <td>${t.name}</td>
                     <td>${t.type}</td>
