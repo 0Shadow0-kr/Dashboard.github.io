@@ -69,13 +69,12 @@
         th { color: var(--text-sub); text-align: right; font-size: 14px; }
         th:first-child, td:first-child { text-align: left; padding-left: 10px; }
         th:nth-child(2), td:nth-child(2) { text-align: left; font-weight: bold; color: #fff; }
-        th:last-child, td:last-child { text-align: center; width: 120px; } /* 버튼 2개 공간 넓힘 */
+        th:last-child, td:last-child { text-align: center; width: 120px; }
         
         .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px; }
         .badge-win { background-color: var(--accent); color: #000; }
         .badge-itm { background-color: rgba(3, 218, 198, 0.2); color: var(--win-color); border: 1px solid var(--win-color); }
 
-        /* 🔥 인라인 편집 및 버튼 스타일 추가 */
         .action-btns { display: flex; gap: 5px; justify-content: center; width: 100%; }
         .btn-edit, .btn-delete, .btn-save-edit, .btn-cancel-edit { flex: 1; padding: 6px 0; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; text-align: center; transition: 0.2s; min-width: 45px; }
         .btn-edit { background-color: #ffb74d; color: #000; }
@@ -92,6 +91,7 @@
 
         .edit-input { background: #1a1a1a; color: #fff; border: 1px solid var(--accent); border-radius: 4px; padding: 6px; font-family: 'Pretendard', sans-serif; font-size: 13px; box-sizing: border-box; text-align: center; width: 100%; }
         .edit-input-left { text-align: left; }
+        .flex-center { display: flex; gap: 5px; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
@@ -136,8 +136,12 @@
         </div>
         <div class="input-row">
             <div class="input-group">
-                <label for="tBuyin">바이인 (참가비)</label>
+                <label for="tBuyin">1회 바이인 (참가비)</label>
                 <input type="text" id="tBuyin" placeholder="0" onkeyup="addCommas(this)">
+            </div>
+            <div class="input-group">
+                <label for="tEntries">엔트리 횟수</label>
+                <input type="number" id="tEntries" value="1" min="1">
             </div>
             <div class="input-group">
                 <label for="tPrize">획득 상금 (수익)</label>
@@ -152,11 +156,11 @@
     </div>
 
     <div class="summary-grid">
-        <div class="card" style="border-top-color: #fff;"><h3>총 참가 횟수</h3><p id="statCount">0</p></div>
+        <div class="card" style="border-top-color: #fff;"><h3>총 참가 횟수 (토너먼트)</h3><p id="statCount">0</p></div>
         <div class="card" style="border-top-color: var(--hands-color);"><h3>ITM (입상) 비율</h3><p id="statItm">0.0%</p></div>
         <div class="card" style="border-top-color: var(--accent);"><h3>1등 (우승) 비율</h3><p id="statWin" class="gold">0.0%</p></div>
         <div class="card" style="border-top-color: var(--win-color);"><h3>ROI (투자 수익률)</h3><p id="statRoi">0.0%</p></div>
-        <div class="card" style="border-top-color: var(--lose-color);"><h3>총 순수익 (상금-바이인)</h3><p id="statNet">0</p></div>
+        <div class="card" style="border-top-color: var(--lose-color);"><h3>총 순수익 (상금 - 총바이인)</h3><p id="statNet">0</p></div>
     </div>
 
     <div class="chart-row" style="margin-bottom: 20px;">
@@ -174,7 +178,7 @@
                     <th>날짜</th>
                     <th>토너먼트 명</th>
                     <th>등수</th>
-                    <th>바이인</th>
+                    <th>바이인 (엔트리)</th>
                     <th>획득 상금</th>
                     <th>순수익</th>
                     <th style="text-align:center;">관리</th>
@@ -188,7 +192,7 @@
 
 <script>
     let profitChart;
-    let editingId = null; // 편집 상태를 저장하는 변수 추가
+    let editingId = null;
     
     window.onload = function() { 
         loadPresetNames();
@@ -250,6 +254,7 @@
         document.getElementById('tName').value = '';
         document.getElementById('tRank').value = '';
         document.getElementById('tBuyin').value = '';
+        document.getElementById('tEntries').value = '1';
         document.getElementById('tPrize').value = '';
     }
 
@@ -258,6 +263,7 @@
         const nameStr = document.getElementById('tName').value.trim() || '이름 없음';
         const rankVal = document.getElementById('tRank').value.trim() ? parseInt(document.getElementById('tRank').value) : null;
         const buyin = parseNum(document.getElementById('tBuyin').value);
+        const entries = parseInt(document.getElementById('tEntries').value) || 1;
         const prize = parseNum(document.getElementById('tPrize').value);
 
         if (!dateStr || dateStr.length !== 10) return alert('정확한 날짜(YYYY-MM-DD)를 입력해주세요!');
@@ -271,6 +277,7 @@
             name: nameStr,
             rank: rankVal,
             buyin: buyin, 
+            entries: entries,
             prize: prize 
         });
 
@@ -281,7 +288,6 @@
         clearInputs();
     }
 
-    /* 🔥 인라인 편집 관련 기능 추가 */
     window.editRow = function(id) {
         editingId = id;
         updateDashboard();
@@ -298,6 +304,7 @@
         const rankStr = document.getElementById('edit-rank-' + id).value.trim();
         const rankInput = rankStr ? parseInt(rankStr) : null;
         const buyinInput = parseNum(document.getElementById('edit-buyin-' + id).value);
+        const entriesInput = parseInt(document.getElementById('edit-entries-' + id).value) || 1;
         const prizeInput = parseNum(document.getElementById('edit-prize-' + id).value);
 
         if (!dateInput || dateInput.length !== 10) {
@@ -315,9 +322,9 @@
                 name: nameInput, 
                 rank: rankInput, 
                 buyin: buyinInput, 
+                entries: entriesInput,
                 prize: prizeInput 
             };
-            // 정렬 유지
             tourneyData.sort((a, b) => new Date(a.date) - new Date(b.date));
             localStorage.setItem(storageKey, JSON.stringify(tourneyData));
         }
@@ -349,8 +356,8 @@
         const storageKey = getStorageKey();
         const data = JSON.parse(localStorage.getItem(storageKey)) || [];
         
-        let totalEntries = data.length;
-        let totalBuyin = 0;
+        let totalEntries = data.length; // 토너먼트 참가 횟수
+        let totalBuyinCost = 0;
         let totalPrize = 0;
         let itmCount = 0;
         let winCount = 0;
@@ -363,9 +370,12 @@
         tbody.innerHTML = '';
 
         data.forEach(row => {
-            totalBuyin += row.buyin;
+            const entriesCount = row.entries || 1; // 과거 호환성 (데이터에 entries가 없으면 1로 간주)
+            const rowTotalBuyin = row.buyin * entriesCount;
+            
+            totalBuyinCost += rowTotalBuyin;
             totalPrize += row.prize;
-            const netProfit = row.prize - row.buyin;
+            const netProfit = row.prize - rowTotalBuyin;
             currentCumProfit += netProfit;
 
             if (row.prize > 0) itmCount++;
@@ -376,13 +386,18 @@
 
             const tr = document.createElement('tr');
 
-            // 🔥 편집 모드일 때 렌더링
             if (editingId === row.id) {
                 tr.innerHTML = `
                     <td><input type="text" id="edit-date-${row.id}" class="edit-input" value="${row.date}"></td>
                     <td><input type="text" id="edit-name-${row.id}" class="edit-input edit-input-left" value="${row.name}"></td>
                     <td><input type="number" id="edit-rank-${row.id}" class="edit-input" value="${row.rank || ''}"></td>
-                    <td><input type="text" id="edit-buyin-${row.id}" class="edit-input" value="${row.buyin}" onkeyup="addCommas(this)"></td>
+                    <td>
+                        <div class="flex-center">
+                            <input type="text" id="edit-buyin-${row.id}" class="edit-input" value="${row.buyin}" onkeyup="addCommas(this)" style="width: 70px;">
+                            <span style="color:#888;">x</span>
+                            <input type="number" id="edit-entries-${row.id}" class="edit-input" value="${entriesCount}" min="1" style="width: 45px;">
+                        </div>
+                    </td>
                     <td><input type="text" id="edit-prize-${row.id}" class="edit-input" value="${row.prize}" onkeyup="addCommas(this)"></td>
                     <td style="color:#555;">-</td>
                     <td>
@@ -393,7 +408,6 @@
                     </td>
                 `;
             } 
-            // 🔥 일반 모드일 때 렌더링
             else {
                 let nameDisplay = row.name;
                 if (row.rank === 1) {
@@ -406,7 +420,7 @@
                     <td>${row.date}</td>
                     <td>${nameDisplay}</td>
                     <td>${row.rank ? row.rank + '등' : '-'}</td>
-                    <td style="color:var(--lose-color);">${row.buyin.toLocaleString()}</td>
+                    <td style="color:var(--lose-color);">${row.buyin.toLocaleString()} <span style="font-size:0.85em; color:#888;">(x${entriesCount})</span></td>
                     <td style="color:var(--win-color);">${row.prize.toLocaleString()}</td>
                     <td class="${netProfit >= 0 ? 'positive' : 'negative'}">${netProfit.toLocaleString()}</td>
                     <td>
@@ -422,8 +436,8 @@
 
         const itmRate = totalEntries > 0 ? (itmCount / totalEntries) * 100 : 0;
         const winRate = totalEntries > 0 ? (winCount / totalEntries) * 100 : 0;
-        const totalNetProfit = totalPrize - totalBuyin;
-        const totalRoi = totalBuyin > 0 ? (totalNetProfit / totalBuyin) * 100 : 0;
+        const totalNetProfit = totalPrize - totalBuyinCost;
+        const totalRoi = totalBuyinCost > 0 ? (totalNetProfit / totalBuyinCost) * 100 : 0;
 
         document.getElementById('statCount').innerText = totalEntries.toLocaleString();
         document.getElementById('statItm').innerText = itmRate.toFixed(1) + '%';
