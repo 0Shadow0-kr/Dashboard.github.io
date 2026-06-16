@@ -20,8 +20,10 @@
         .nav-btn:hover { background-color: #333; }
         .nav-btn.active { background-color: var(--accent); color: #000; border-color: var(--accent); }
 
-        .header { border-bottom: 1px solid #333; padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;}
+        .header { border-bottom: 1px solid #333; padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 15px;}
         h1 { margin: 0; color: var(--accent); }
+        
+        .header-buttons { display: flex; gap: 10px; margin-left: auto; }
         
         .preset-section { background-color: #252525; padding: 12px 20px; border-radius: 8px; border: 1px solid var(--accent); margin-bottom: 20px; display: inline-flex; align-items: center; gap: 15px; }
         .preset-section label { font-weight: bold; color: var(--text-main); font-size: 15px; }
@@ -92,6 +94,33 @@
         .edit-input { background: #1a1a1a; color: #fff; border: 1px solid var(--accent); border-radius: 4px; padding: 6px; font-family: 'Pretendard', sans-serif; font-size: 13px; box-sizing: border-box; text-align: center; width: 100%; }
         .edit-input-left { text-align: left; }
         .flex-center { display: flex; gap: 5px; justify-content: center; align-items: center; }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .nav-bar { gap: 8px; margin-bottom: 15px; }
+            .nav-btn { padding: 12px 8px; font-size: 14px; }
+            .header { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .header-buttons { width: 100%; display: flex; gap: 10px; }
+            .header-buttons .btn-rename { flex: 1; text-align: center; margin: 0; padding: 12px; font-size: 14px; box-sizing: border-box; }
+            .preset-section { width: 100%; flex-direction: column; align-items: stretch; gap: 10px; box-sizing: border-box; padding: 15px; }
+            .preset-section select { width: 100%; text-align: center; }
+            .preset-section .btn-rename, .preset-section .btn-chart { width: 100%; padding: 10px; margin: 0 !important; text-align: center; box-sizing: border-box;}
+            .calculator-section { padding: 15px; }
+            .input-group { width: 100%; min-width: auto; box-sizing: border-box; }
+            .btn-action-group { flex-direction: column; gap: 10px; }
+            button, .btn-clear-calc { width: 100%; min-width: auto; margin: 0; padding: 14px; }
+            .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
+            .card { padding: 15px 10px; }
+            .card p { font-size: 18px; }
+            .chart-container, .chart-full { height: 280px; padding: 10px; }
+            .data-table-container { padding: 15px; }
+            .data-table-container h3 { display: block; text-align: center; margin-bottom: 15px; width: 100%; }
+            .btn-reset-all { float: none; display: block; width: 100%; padding: 12px; text-align: center; margin-bottom: 15px; font-size: 14px; border: 1px solid #cf6679; color: #cf6679; }
+            th, td { font-size: 12px; padding: 10px 5px; white-space: nowrap; }
+            th:last-child, td:last-child { width: auto; min-width: 90px; }
+            .action-btns { gap: 4px; }
+            .btn-edit, .btn-delete, .btn-save-edit, .btn-cancel-edit { padding: 8px 0; font-size: 11px; }
+        }
     </style>
 </head>
 <body>
@@ -104,6 +133,12 @@
 
     <div class="header">
         <h1>🏆 WPL 토너먼트 트래커</h1>
+        
+        <div class="header-buttons">
+            <input type="file" id="importTourneyInput" accept=".csv" style="display: none;" onchange="importAllTourneyPresets(event)">
+            <button class="btn-rename" onclick="document.getElementById('importTourneyInput').click()" style="background-color: var(--hands-color); color: #fff;">기록 불러오기</button>
+            <button class="btn-rename" onclick="exportAllTourneyPresets()" style="background-color: var(--win-color); color: #000;">기록 저장하기</button>
+        </div>
     </div>
 
     <div class="preset-section">
@@ -356,7 +391,7 @@
         const storageKey = getStorageKey();
         const data = JSON.parse(localStorage.getItem(storageKey)) || [];
         
-        let totalEntries = data.length; // 토너먼트 참가 횟수
+        let totalEntries = data.length;
         let totalBuyinCost = 0;
         let totalPrize = 0;
         let itmCount = 0;
@@ -370,7 +405,7 @@
         tbody.innerHTML = '';
 
         data.forEach(row => {
-            const entriesCount = row.entries || 1; // 과거 호환성 (데이터에 entries가 없으면 1로 간주)
+            const entriesCount = row.entries || 1;
             const rowTotalBuyin = row.buyin * entriesCount;
             
             totalBuyinCost += rowTotalBuyin;
@@ -476,6 +511,118 @@
             } 
         });
     }
+
+    // CSV 파일 내보내기 함수
+    window.exportAllTourneyPresets = function() {
+        const keys = ['wplTourney_preset1', 'wplTourney_preset2', 'wplTourney_preset3'];
+        let csvContent = "프리셋 이름,날짜,토너먼트 명,등수,1회 바이인,엔트리 횟수,획득 상금\n";
+        
+        const savedNames = JSON.parse(localStorage.getItem('wplTourneyPresetNames')) || {};
+        const defaultNames = { 'wplTourney_preset1': '토너먼트 기록 1', 'wplTourney_preset2': '토너먼트 기록 2', 'wplTourney_preset3': '토너먼트 기록 3' };
+
+        keys.forEach(key => {
+            const data = JSON.parse(localStorage.getItem(key)) || [];
+            const presetName = savedNames[key] || defaultNames[key];
+            
+            data.forEach(row => {
+                // 이름에 포함된 콤마(,)가 CSV 구조를 깨지 않도록 제거
+                const safeName = row.name ? row.name.replace(/,/g, '') : '';
+                const rankVal = row.rank ? row.rank : '';
+                csvContent += `${presetName},${row.date},${safeName},${rankVal},${row.buyin},${row.entries},${row.prize}\n`;
+            });
+        });
+
+        const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `토너먼트통합기록_${new Date().toLocaleDateString()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // CSV 파일 불러오기 함수
+    window.importAllTourneyPresets = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if(!confirm("파일을 불러오면 기존의 저장된 토너먼트 데이터가 모두 덮어씌워집니다.\n계속하시겠습니까?")) {
+            event.target.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+
+            if (lines.length <= 1) {
+                alert("불러올 데이터가 없습니다.");
+                return;
+            }
+
+            const availableKeys = ['wplTourney_preset1', 'wplTourney_preset2', 'wplTourney_preset3'];
+            let currentKeyIndex = 0;
+            
+            const parsedData = {}; 
+            const presetNameMap = {}; 
+            const savedNames = {}; 
+
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',');
+                // 최소 7개의 열이 있어야 올바른 데이터로 간주
+                if (cols.length < 7) continue;
+
+                const presetName = cols[0].trim();
+                const date = cols[1].trim();
+                const name = cols[2].trim();
+                const rank = cols[3].trim() !== '' ? parseInt(cols[3]) : null;
+                const buyin = parseFloat(cols[4]) || 0;
+                const entries = parseInt(cols[5]) || 1;
+                const prize = parseFloat(cols[6]) || 0;
+
+                if (!presetNameMap[presetName]) {
+                    if (currentKeyIndex >= availableKeys.length) continue; 
+                    const key = availableKeys[currentKeyIndex++];
+                    presetNameMap[presetName] = key;
+                    savedNames[key] = presetName;
+                    parsedData[key] = [];
+                }
+
+                const key = presetNameMap[presetName];
+                parsedData[key].push({
+                    id: Date.now() + Math.random(),
+                    date: date,
+                    name: name,
+                    rank: rank,
+                    buyin: buyin,
+                    entries: entries,
+                    prize: prize
+                });
+            }
+
+            Object.keys(parsedData).forEach(key => {
+                localStorage.setItem(key, JSON.stringify(parsedData[key]));
+            });
+            
+            for (let i = currentKeyIndex; i < availableKeys.length; i++) {
+                localStorage.removeItem(availableKeys[i]);
+            }
+
+            localStorage.setItem('wplTourneyPresetNames', JSON.stringify(savedNames));
+
+            alert("토너먼트 기록을 성공적으로 불러왔습니다!");
+            
+            loadPresetNames();
+            updateDashboard();
+            
+            event.target.value = '';
+        };
+        
+        reader.readAsText(file);
+    };
 </script>
 </body>
 </html>
