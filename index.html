@@ -99,59 +99,43 @@
         .btn-save-edit:hover { filter: brightness(0.9); }
         .btn-cancel-edit { background-color: #444; color: #fff; }
         .btn-cancel-edit:hover { background-color: #555; }
-        .btn-reset-all { background: transparent; border: 1px solid #555; color: #888; padding: 5px 10px; font-size: 12px; float: right; cursor: pointer; transition: 0.2s; min-width: auto; }
-        .btn-reset-all:hover { color: #fff; border-color: #888; }
+        
+        /* 버튼 늘어남 방지 설정 */
+        .btn-reset-all { background: transparent; border: 1px solid #555; color: #cf6679; padding: 6px 12px; font-size: 12px; cursor: pointer; transition: 0.2s; border-radius: 4px; font-weight: bold; width: auto; margin-left: auto; white-space: nowrap; flex: none; min-width: 0; }
+        .btn-reset-all:hover { color: #fff; border-color: #cf6679; background-color: rgba(207, 102, 121, 0.2); }
+        
         .edit-input { background: #1a1a1a; color: #fff; border: 1px solid var(--accent); border-radius: 4px; padding: 6px; font-family: 'Pretendard', sans-serif; font-size: 13px; box-sizing: border-box; text-align: center; width: 100%; }
 
         @media (max-width: 768px) {
             body { padding: 10px; }
-            
-            /* 네비게이션: 가로 유지는 하되 여백과 폰트 크기 축소 */
             .nav-bar { gap: 8px; margin-bottom: 15px; }
             .nav-btn { padding: 12px 8px; font-size: 14px; }
-
-            /* 헤더 영역: 제목과 저장 버튼 세로 배치 */
             .header { flex-direction: column; align-items: flex-start; gap: 15px; }
-            
             .header-buttons { display: flex; gap: 10px; width: 100%; }
             .header-buttons .btn-rename { margin-left: 0; flex: 1; padding: 12px; font-size: 14px; box-sizing: border-box; text-align: center;}
-
-            /* 프리셋(장부) 영역: 전체 너비 사용 및 세로 배치 */
             .preset-section { width: 100%; flex-direction: column; align-items: stretch; gap: 10px; box-sizing: border-box; padding: 15px; }
             .preset-section select { width: 100%; text-align: center; }
             .preset-section .btn-rename { width: 100%; padding: 10px; }
-
-            /* 계산기 및 입력 영역 */
             .calculator-section { padding: 15px; }
             .calc-header { flex-direction: column; gap: 15px; }
             .input-group { width: 100%; min-width: auto; box-sizing: border-box; }
-            
-            /* 기존 스플릿 섹션 세로 배치 */
             .split-section { flex-direction: column; gap: 15px; margin-bottom: 15px; }
-
-            /* 액션 버튼 그룹: 모바일에서는 누르기 쉽게 세로로 꽉 차게 배치 */
             .btn-action-group { flex-direction: column; gap: 10px; }
             button, .btn-clear-calc { width: 100%; min-width: auto; margin: 0; padding: 14px; }
-
-            /* 요약 카드: 2열 그리드로 변경하여 공간 최적화 */
             .summary-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px; }
             .card { padding: 15px 10px; }
             .card p { font-size: 18px; }
-
-            /* 차트 영역: 1열로 변경 및 높이 조정 */
             .chart-row { grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px; }
             .chart-container, .chart-full { height: 280px; padding: 10px; }
-
-            /* 테이블 및 데이터 리스트 영역 */
             .data-table-container { padding: 15px; }
-            .data-table-container h3 { display: block; text-align: center; margin-bottom: 15px; width: 100%; }
-            .btn-reset-all { float: none; display: block; width: 100%; padding: 12px; text-align: center; margin-bottom: 15px; font-size: 14px; border: 1px solid #cf6679; color: #cf6679; }
             
-            /* 테이블 내부 여백 및 폰트 축소 (가로 스크롤은 유지됨) */
+            /* 모바일 히스토리 헤더 및 필터 레이아웃 대응 */
+            .history-filter-group { flex-direction: row; flex-wrap: wrap; width: 100%; justify-content: flex-start; }
+            .history-filter-group input[type="date"] { flex: 1; min-width: 130px; padding: 8px; }
+            .btn-filter-reset { padding: 8px 12px; }
+
             th, td { font-size: 12px; padding: 10px 5px; white-space: nowrap; }
             th:last-child, td:last-child { width: auto; min-width: 90px; }
-            
-            /* 수정/삭제 버튼 컨테이너 최적화 */
             .action-btns { gap: 4px; }
             .btn-edit, .btn-delete, .btn-save-edit, .btn-cancel-edit { padding: 8px 0; font-size: 11px; }
         }
@@ -238,9 +222,23 @@
         <div class="chart-container chart-full"><canvas id="profitChart"></canvas></div>
     </div>
 
+    <!-- 데이터 테이블 컨테이너 영역 -->
     <div class="data-table-container">
-        <h3 style="margin-top:0; color:var(--accent); display:inline-block;">History</h3>
-        <button class="btn-reset-all" onclick="clearAllData()">현재 장부 기록 초기화</button>
+        
+        <!-- 한 줄에 타이틀, 날짜 필터, 초기화 버튼을 모두 배치 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h3 style="margin:0; color:var(--accent); white-space: nowrap;">History</h3>
+                
+                <label for="historyDateFilter" style="font-size: 14px; font-weight: bold; color: var(--text-sub); white-space: nowrap; margin-left: 10px;">날짜 필터:</label>
+                <input type="date" id="historyDateFilter" onchange="updateDashboard()" class="edit-input" style="width: auto; margin: 0; padding: 6px 10px; cursor: pointer; flex: none;">
+                
+                <button onclick="document.getElementById('historyDateFilter').value=''; updateDashboard()" style="background-color: #444; color: #fff; padding: 6px 12px; font-size: 13px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; white-space: nowrap; flex: none; min-width: 0; margin: 0;">전체 보기</button>
+            </div>
+            
+            <button class="btn-reset-all" onclick="clearAllData()">현재 장부 기록 초기화</button>
+        </div>
+
         <table>
             <thead>
                 <tr>
@@ -447,9 +445,14 @@
         let totalHands = 0; let totalProfit = 0; let totalBBEarned = 0;
         const labels = []; const cumProfitData = []; const bb100Data = []; const dailyProfitData = [];
         
+        // 날짜 필터값 가져오기
+        const filterDateEl = document.getElementById('historyDateFilter');
+        const filterDate = filterDateEl ? filterDateEl.value : '';
+
         const tbody = document.getElementById('dataTableBody'); tbody.innerHTML = '';
 
         data.forEach((row, index) => {
+            // 요약/차트용 통계는 필터에 관계없이 전체 누적으로 계산
             totalHands += row.hands;
             totalProfit += row.dailyProfit;
             
@@ -469,6 +472,11 @@
             cumProfitData.push(totalProfit);
             bb100Data.push(dynamicBB100);
             dailyProfitData.push(row.dailyProfit);
+
+            // 지정한 날짜 필터가 있으면 해당되지 않는 데이터는 테이블에 그리지 않고 건너뜀
+            if (filterDate && row.date !== filterDate) {
+                return;
+            }
 
             const tr = document.createElement('tr');
             if (editingId === row.id) {
@@ -494,6 +502,11 @@
             }
             tbody.appendChild(tr);
         });
+
+        // 테이블이 비어있으면 문구 출력
+        if (tbody.innerHTML === '') {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 25px; color: var(--text-sub);">${filterDate ? '선택한 날짜의' : '저장된'} 참가 내역이 없습니다.</td></tr>`;
+        }
 
         document.getElementById('totHands').innerText = totalHands.toLocaleString();
         document.getElementById('totBB').innerText = totalBBEarned.toFixed(2);
@@ -556,14 +569,12 @@
         document.body.removeChild(link);
     };
 
-    // CSV 파일 업로드 및 데이터 파싱 함수 추가
     window.importAllPresets = function(event) {
         const file = event.target.files[0];
         if (!file) return;
 
-        // 경고창
         if(!confirm("파일을 불러오면 기존의 저장된 데이터가 모두 덮어씌워집니다.\n계속하시겠습니까?")) {
-            event.target.value = ''; // 선택 초기화
+            event.target.value = ''; 
             return;
         }
 
@@ -584,7 +595,6 @@
             const presetNameMap = {}; 
             const savedNames = {}; 
 
-            // 첫째 줄(헤더) 제외하고 반복
             for (let i = 1; i < lines.length; i++) {
                 const cols = lines[i].split(',');
                 if (cols.length < 5) continue;
@@ -595,9 +605,8 @@
                 const hands = parseFloat(cols[3]);
                 const profit = parseFloat(cols[4]);
 
-                // 새로운 장부(프리셋) 이름을 발견하면 내부 key와 매핑
                 if (!presetNameMap[presetName]) {
-                    if (currentKeyIndex >= availableKeys.length) continue; // 프리셋 최대 4개까지만 지원
+                    if (currentKeyIndex >= availableKeys.length) continue; 
                     const key = availableKeys[currentKeyIndex++];
                     presetNameMap[presetName] = key;
                     savedNames[key] = presetName;
@@ -614,26 +623,22 @@
                 });
             }
 
-            // localStorage에 파싱된 데이터 저장
             Object.keys(parsedData).forEach(key => {
                 localStorage.setItem(key, JSON.stringify(parsedData[key]));
             });
             
-            // 파일에 없었던 남은 프리셋 기록들은 비우기
             for (let i = currentKeyIndex; i < availableKeys.length; i++) {
                 localStorage.removeItem(availableKeys[i]);
             }
 
-            // 복원된 프리셋 이름 저장
             localStorage.setItem('wplPresetNames', JSON.stringify(savedNames));
 
             alert("기록을 성공적으로 불러왔습니다!");
             
-            // 화면 갱신
             loadPresetNames();
             updateDashboard();
             
-            event.target.value = ''; // 다음 업로드를 위해 파일 선택 초기화
+            event.target.value = ''; 
         };
         
         reader.readAsText(file);
