@@ -103,6 +103,12 @@
         tr:hover {
             background-color: #e9ecef;
         }
+        
+        /* 레잇 레지 강조 텍스트용 클래스 */
+        .badge-regi {
+            color: #d35400;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -140,6 +146,7 @@
         <thead>
             <tr>
                 <th>시간</th>
+                <th>Max Late Regi.</th>
                 <th>토너먼트명</th>
                 <th>타입</th>
                 <th>바이인</th>
@@ -174,6 +181,44 @@
             }
             
             return result.trim();
+        }
+
+        // 마감 시간을 계산해주는 함수 (예외 포함)
+        function calculateLateRegTime(startTime, name) {
+            // 1. 고정 마감 시간 예외 처리
+            if (name.includes("데일리 미니 메인") || name.includes("위켄드 빌리언즈 미니")) {
+                return "22:00";
+            }
+            if (name.includes("데일리 메인") || name.includes("위켄드 빌리언즈")) {
+                return "22:10";
+            }
+
+            // 2. 분 단위 지속시간 할당
+            let durationMinutes = null;
+            if (name.includes("워밍업 터보")) durationMinutes = 53;
+            else if (name.includes("스텝업 터보")) durationMinutes = 45;
+            else if (name.includes("루키스 터보")) durationMinutes = 45;
+            else if (name.includes("데일리 스페셜")) durationMinutes = 89;
+            else if (name.includes("워밍업")) durationMinutes = 77;
+            else if (name.includes("스텝업")) durationMinutes = 45;
+            else if (name.includes("프리롤")) durationMinutes = 10;
+            else if (name.includes("비기너스")) durationMinutes = 50;
+            else if (name.includes("루키스")) durationMinutes = 55;
+            else if (name.includes("클래식")) durationMinutes = 89;
+
+            if (durationMinutes === null) return "-";
+            
+            // 3. 실제 시간 계산
+            let [hours, minutes] = startTime.split(':').map(Number);
+            let totalMinutes = (hours * 60) + minutes + durationMinutes;
+            
+            let newHours = Math.floor(totalMinutes / 60) % 24;
+            let newMinutes = totalMinutes % 60;
+            
+            let hh = String(newHours).padStart(2, '0');
+            let mm = String(newMinutes).padStart(2, '0');
+            
+            return `${hh}:${mm}`;
         }
 
         // 원본 데이터 배열
@@ -303,20 +348,23 @@
             ["매일", "23:30", "데일리 스페셜 600억 GTD", "NLH", "300,000,000", "60,000,000,000"]
         ];
 
-        // 객체 형태로 데이터 파싱
+        // 객체 형태로 데이터 파싱 (레잇 레지 시간 포함)
         const tournaments = rawData.map(row => {
             let buyInRaw = row[4].replace(/,/g, ''); 
             let buyInValue = buyInRaw === '-' ? 0 : parseInt(buyInRaw, 10); 
             
-            // 상금 포맷 변환
+            let startTime = row[1];
+            let name = row[2];
             let formattedPrize = formatKoreanCurrency(row[5]);
+            let actualLateRegTime = calculateLateRegTime(startTime, name);
 
             return {
                 schedule: row[0],
-                time: row[1],
-                name: row[2],
+                time: startTime,
+                lateReg: actualLateRegTime,
+                name: name,
                 type: row[3],
-                buyInString: formatKoreanCurrency(row[4]), // 바이인도 변환 적용
+                buyInString: formatKoreanCurrency(row[4]),
                 buyInValue: buyInValue,
                 prize: formattedPrize
             };
@@ -329,7 +377,8 @@
             tableBody.innerHTML = '';
             
             if (data.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="5">해당 조건에 맞는 토너먼트가 없습니다.</td></tr>';
+                // 열이 하나 추가되었으므로 colspan="6"
+                tableBody.innerHTML = '<tr><td colspan="6">해당 조건에 맞는 토너먼트가 없습니다.</td></tr>';
                 return;
             }
 
@@ -337,6 +386,7 @@
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${t.time}</td>
+                    <td class="badge-regi">${t.lateReg}</td>
                     <td>${t.name}</td>
                     <td>${t.type}</td>
                     <td>${t.buyInString}</td>
@@ -348,19 +398,15 @@
 
         // 필터링 로직
         function filterTable() {
-            // 최소 금액 관련 값 가져오기
             const minInput = document.getElementById('minBuyInInput').value;
             const minUnit = parseInt(document.getElementById('minUnitSelect').value, 10);
             
-            // 최대 금액 관련 값 가져오기
             const maxInput = document.getElementById('maxBuyInInput').value;
             const maxUnit = parseInt(document.getElementById('maxUnitSelect').value, 10);
 
-            // 공란 여부에 따른 최소/최대값 설정
-            const minBuyIn = minInput ? parseFloat(minInput) * minUnit : 0; // 공란이면 0
-            const maxBuyIn = maxInput ? parseFloat(maxInput) * maxUnit : Infinity; // 공란이면 무한대
+            const minBuyIn = minInput ? parseFloat(minInput) * minUnit : 0; 
+            const maxBuyIn = maxInput ? parseFloat(maxInput) * maxUnit : Infinity; 
 
-            // 최소 ~ 최대 사이에 있는 데이터만 필터링
             const filteredData = tournaments.filter(t => t.buyInValue >= minBuyIn && t.buyInValue <= maxBuyIn);
             
             renderTable(filteredData);
@@ -375,7 +421,7 @@
             renderTable(tournaments);
         }
 
-        // 초기 화면
+        // 초기 화면 렌더링
         renderTable(tournaments);
     </script>
 </body>
