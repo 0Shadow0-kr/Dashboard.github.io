@@ -183,22 +183,17 @@
             return result.trim();
         }
 
-        // 마감 시간을 계산해주는 함수 (예외 포함)
+        // 마감 시간을 계산해주는 함수 (이 부분이 지워져서 복구했습니다)
         function calculateLateRegTime(startTime, name) {
-            // 1. 고정 마감 시간 예외 처리
-            if (name.includes("데일리 미니 메인") || name.includes("위켄드 빌리언즈 미니")) {
-                return "22:00";
-            }
-            if (name.includes("데일리 메인") || name.includes("위켄드 빌리언즈")) {
-                return "22:10";
-            }
-
-            // 2. 분 단위 지속시간 할당
             let durationMinutes = null;
             if (name.includes("워밍업 터보")) durationMinutes = 53;
             else if (name.includes("스텝업 터보")) durationMinutes = 45;
             else if (name.includes("루키스 터보")) durationMinutes = 45;
+            else if (name.includes("데일리 미니 메인")) durationMinutes = 77;
+            else if (name.includes("데일리 메인")) durationMinutes = 89;
             else if (name.includes("데일리 스페셜")) durationMinutes = 89;
+            else if (name.includes("위켄드 빌리언즈 미니")) durationMinutes = 77;
+            else if (name.includes("위켄드 빌리언즈")) durationMinutes = 89;
             else if (name.includes("워밍업")) durationMinutes = 77;
             else if (name.includes("스텝업")) durationMinutes = 45;
             else if (name.includes("프리롤")) durationMinutes = 10;
@@ -208,7 +203,7 @@
 
             if (durationMinutes === null) return "-";
             
-            // 3. 실제 시간 계산
+            // 실제 시간 계산
             let [hours, minutes] = startTime.split(':').map(Number);
             let totalMinutes = (hours * 60) + minutes + durationMinutes;
             
