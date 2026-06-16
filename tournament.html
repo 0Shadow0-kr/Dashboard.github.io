@@ -25,7 +25,7 @@
         
         .header-buttons { display: flex; gap: 10px; margin-left: auto; }
         
-        .preset-section { background-color: #252525; padding: 12px 20px; border-radius: 8px; border: 1px solid var(--accent); margin-bottom: 20px; display: inline-flex; align-items: center; gap: 15px; }
+        .preset-section { background-color: #252525; padding: 12px 20px; border-radius: 8px; border: 1px solid var(--accent); margin-bottom: 20px; display: inline-flex; align-items: center; gap: 15px; flex-wrap: wrap; }
         .preset-section label { font-weight: bold; color: var(--text-main); font-size: 15px; }
         .preset-section select { padding: 8px 15px; background: #1a1a1a; color: var(--accent); border: 1px solid #444; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
         .preset-section select:focus { outline: none; border-color: var(--accent); }
@@ -88,8 +88,9 @@
         .btn-cancel-edit { background-color: #444; color: #fff; }
         .btn-cancel-edit:hover { background-color: #555; }
         
-        .btn-reset-all { background: transparent; border: 1px solid #555; color: #888; padding: 5px 10px; font-size: 12px; float: right; cursor: pointer; transition: 0.2s; }
-        .btn-reset-all:hover { color: #fff; border-color: #888; }
+        /* 버튼 늘어남 방지 (flex: none, min-width: 0) 적용 */
+        .btn-reset-all { background: transparent; border: 1px solid #555; color: #cf6679; padding: 6px 12px; font-size: 12px; cursor: pointer; transition: 0.2s; border-radius: 4px; font-weight: bold; width: auto; margin-left: auto; white-space: nowrap; flex: none; min-width: 0; }
+        .btn-reset-all:hover { color: #fff; border-color: #cf6679; background-color: rgba(207, 102, 121, 0.2); }
 
         .edit-input { background: #1a1a1a; color: #fff; border: 1px solid var(--accent); border-radius: 4px; padding: 6px; font-family: 'Pretendard', sans-serif; font-size: 13px; box-sizing: border-box; text-align: center; width: 100%; }
         .edit-input-left { text-align: left; }
@@ -114,8 +115,6 @@
             .card p { font-size: 18px; }
             .chart-container, .chart-full { height: 280px; padding: 10px; }
             .data-table-container { padding: 15px; }
-            .data-table-container h3 { display: block; text-align: center; margin-bottom: 15px; width: 100%; }
-            .btn-reset-all { float: none; display: block; width: 100%; padding: 12px; text-align: center; margin-bottom: 15px; font-size: 14px; border: 1px solid #cf6679; color: #cf6679; }
             th, td { font-size: 12px; padding: 10px 5px; white-space: nowrap; }
             th:last-child, td:last-child { width: auto; min-width: 90px; }
             .action-btns { gap: 4px; }
@@ -205,8 +204,20 @@
     </div>
 
     <div class="data-table-container">
-        <h3 style="margin-top:0; color:var(--accent); display:inline-block;">토너먼트 참가 내역</h3>
-        <button class="btn-reset-all" onclick="clearAllData()">현재 장부 기록 초기화</button>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <h3 style="margin:0; color:var(--accent); white-space: nowrap;">토너먼트 참가 내역</h3>
+                
+                <label for="historyDateFilter" style="font-size: 14px; font-weight: bold; color: var(--text-sub); white-space: nowrap; margin-left: 10px;">날짜 필터:</label>
+                <input type="date" id="historyDateFilter" onchange="updateDashboard()" class="edit-input" style="width: auto; margin: 0; padding: 6px 10px; cursor: pointer; flex: none;">
+                
+                <button onclick="document.getElementById('historyDateFilter').value=''; updateDashboard()" style="background-color: #444; color: #fff; padding: 6px 12px; font-size: 13px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; white-space: nowrap; flex: none; min-width: 0; margin: 0;">전체 보기</button>
+            </div>
+            
+            <button class="btn-reset-all" onclick="clearAllData()">현재 장부 기록 초기화</button>
+        </div>
+
         <table>
             <thead>
                 <tr>
@@ -401,6 +412,10 @@
         const cumProfitData = [];
         let currentCumProfit = 0;
         
+        // 날짜 필터값 가져오기
+        const filterDateEl = document.getElementById('historyDateFilter');
+        const filterDate = filterDateEl ? filterDateEl.value : '';
+        
         const tbody = document.getElementById('dataTableBody'); 
         tbody.innerHTML = '';
 
@@ -408,6 +423,7 @@
             const entriesCount = row.entries || 1;
             const rowTotalBuyin = row.buyin * entriesCount;
             
+            // 요약/차트용 통계는 전체 데이터 기준으로 계산
             totalBuyinCost += rowTotalBuyin;
             totalPrize += row.prize;
             const netProfit = row.prize - rowTotalBuyin;
@@ -418,6 +434,11 @@
 
             labels.push(row.date);
             cumProfitData.push(currentCumProfit);
+
+            // 필터링 적용 (테이블 렌더링 생략 여부 결정)
+            if (filterDate && row.date !== filterDate) {
+                return; 
+            }
 
             const tr = document.createElement('tr');
 
@@ -468,6 +489,10 @@
             }
             tbody.appendChild(tr);
         });
+
+        if (tbody.innerHTML === '') {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 25px; color: var(--text-sub);">${filterDate ? '선택한 날짜의' : '저장된'} 참가 내역이 없습니다.</td></tr>`;
+        }
 
         const itmRate = totalEntries > 0 ? (itmCount / totalEntries) * 100 : 0;
         const winRate = totalEntries > 0 ? (winCount / totalEntries) * 100 : 0;
@@ -525,7 +550,6 @@
             const presetName = savedNames[key] || defaultNames[key];
             
             data.forEach(row => {
-                // 이름에 포함된 콤마(,)가 CSV 구조를 깨지 않도록 제거
                 const safeName = row.name ? row.name.replace(/,/g, '') : '';
                 const rankVal = row.rank ? row.rank : '';
                 csvContent += `${presetName},${row.date},${safeName},${rankVal},${row.buyin},${row.entries},${row.prize}\n`;
@@ -572,7 +596,6 @@
 
             for (let i = 1; i < lines.length; i++) {
                 const cols = lines[i].split(',');
-                // 최소 7개의 열이 있어야 올바른 데이터로 간주
                 if (cols.length < 7) continue;
 
                 const presetName = cols[0].trim();
