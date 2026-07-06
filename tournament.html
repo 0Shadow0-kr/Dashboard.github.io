@@ -10,12 +10,11 @@
             --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff;
             --text-sub: #b3b3b3; --accent: #f6c000;
             --hands-color: #448aff; --win-color: #03dac6; --lose-color: #cf6679;
-            --ft-color: #bb86fc; /* FT 배지용 보라색 추가 */
+            --ft-color: #bb86fc; 
         }
         body { font-family: 'Pretendard', sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
         
-        /* 상단 네비게이션(이동 버튼) 스타일 */
         .nav-bar { display: flex; gap: 15px; margin-bottom: 25px; }
         .nav-btn { flex: 1; padding: 15px; text-align: center; text-decoration: none; font-size: 16px; font-weight: bold; border-radius: 8px; border: 1px solid #444; background-color: #252525; color: var(--text-main); transition: 0.2s; }
         .nav-btn:hover { background-color: #333; }
@@ -31,11 +30,9 @@
         .preset-section select { padding: 8px 15px; background: #1a1a1a; color: var(--accent); border: 1px solid #444; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
         .preset-section select:focus { outline: none; border-color: var(--accent); }
         
-        /* 이름 변경 버튼 스타일 */
         .btn-rename { background-color: #333; color: #fff; padding: 8px 12px; font-size: 13px; font-weight: bold; border-radius: 6px; border: 1px solid #555; cursor: pointer; transition: 0.2s; min-width: auto; flex: none; }
         .btn-rename:hover { background-color: #555; }
         
-        /* 푸쉬/폴드 차트 이동 버튼 스타일 */
         .btn-chart { background-color: #4CAF50; color: #fff; padding: 8px 15px; font-size: 13px; font-weight: bold; border-radius: 6px; border: none; cursor: pointer; transition: 0.2s; text-decoration: none; margin-left: auto; }
         .btn-chart:hover { filter: brightness(0.9); }
 
@@ -78,7 +75,7 @@
         
         .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px; }
         .badge-win { background-color: var(--accent); color: #000; }
-        .badge-ft { background-color: rgba(187, 134, 252, 0.2); color: var(--ft-color); border: 1px solid var(--ft-color); } /* FT 배지 스타일 */
+        .badge-ft { background-color: rgba(187, 134, 252, 0.2); color: var(--ft-color); border: 1px solid var(--ft-color); } 
         .badge-itm { background-color: rgba(3, 218, 198, 0.2); color: var(--win-color); border: 1px solid var(--win-color); }
 
         .action-btns { display: flex; gap: 5px; justify-content: center; width: 100%; }
@@ -92,7 +89,6 @@
         .btn-cancel-edit { background-color: #444; color: #fff; }
         .btn-cancel-edit:hover { background-color: #555; }
         
-        /* 버튼 늘어남 방지 (flex: none, min-width: 0) 적용 */
         .btn-reset-all { background: transparent; border: 1px solid #555; color: #cf6679; padding: 6px 12px; font-size: 12px; cursor: pointer; transition: 0.2s; border-radius: 4px; font-weight: bold; width: auto; margin-left: auto; white-space: nowrap; flex: none; min-width: 0; }
         .btn-reset-all:hover { color: #fff; border-color: #cf6679; background-color: rgba(207, 102, 121, 0.2); }
 
@@ -436,7 +432,8 @@
             if (row.prize > 0) itmCount++;
             if (row.rank === 1) winCount++;
 
-            labels.push(absoluteIndex + '회');
+            // 차트 라벨을 숫자 형태로만 푸시
+            labels.push(absoluteIndex);
             cumProfitData.push(currentCumProfit);
 
             if (filterDate && row.date !== filterDate) {
@@ -471,7 +468,6 @@
             else {
                 let nameDisplay = row.name;
                 
-                // 등수에 따른 배지 표시 로직
                 if (row.rank === 1) {
                     nameDisplay += ` <span class="badge badge-win">WIN 🏆</span>`;
                 } else if (row.rank !== null && row.rank >= 2 && row.rank <= 9) {
@@ -524,6 +520,12 @@
         Chart.defaults.color = '#b3b3b3'; 
         Chart.defaults.font.family = 'Pretendard';
 
+        // X축 스텝 사이즈 동적 계산 (데이터 개수에 따라 5의 배수 간격으로 대략 20개 내외 출력)
+        let stepSize = 1;
+        if (totalEntries > 20) {
+            stepSize = Math.ceil((totalEntries / 20) / 5) * 5;
+        }
+
         const ctx1 = document.getElementById('profitChart').getContext('2d');
         profitChart = new Chart(ctx1, { 
             type: 'line', 
@@ -541,7 +543,22 @@
             }, 
             options: { 
                 responsive: true, 
-                maintainAspectRatio: false 
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: {
+                            autoSkip: false, // 커스텀 콜백을 사용하기 위해 기본 스킵 기능 비활성화
+                            maxRotation: 0,
+                            callback: function(value, index) {
+                                let absoluteIndex = index + 1;
+                                // 전체가 20개 이하일 땐 모든 눈금 표시
+                                if (totalEntries <= 20) return absoluteIndex;
+                                // 계산된 stepSize(5, 10, 50 등)로 나누어 떨어지는 구간만 눈금 표시
+                                return (absoluteIndex % stepSize === 0) ? absoluteIndex : null;
+                            }
+                        }
+                    }
+                }
             } 
         });
     }
