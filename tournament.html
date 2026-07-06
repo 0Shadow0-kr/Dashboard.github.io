@@ -191,8 +191,8 @@
 
     <div class="summary-grid">
         <div class="card" style="border-top-color: #fff;"><h3>총 참가 횟수 (토너먼트)</h3><p id="statCount">0</p></div>
+        <div class="card" style="border-top-color: var(--accent);"><h3>ABI (평균 바이인)</h3><p id="statAbi" class="gold">0</p></div>
         <div class="card" style="border-top-color: var(--hands-color);"><h3>ITM (입상) 비율</h3><p id="statItm">0.0%</p></div>
-        <div class="card" style="border-top-color: var(--accent);"><h3>1등 (우승) 비율</h3><p id="statWin" class="gold">0.0%</p></div>
         <div class="card" style="border-top-color: var(--win-color);"><h3>ROI (투자 수익률)</h3><p id="statRoi">0.0%</p></div>
         <div class="card" style="border-top-color: var(--lose-color);"><h3>총 순수익 (상금 - 총바이인)</h3><p id="statNet">0</p></div>
     </div>
@@ -407,7 +407,6 @@
         let totalBuyinCost = 0;
         let totalPrize = 0;
         let itmCount = 0;
-        let winCount = 0;
 
         const labels = []; 
         const cumProfitData = [];
@@ -430,9 +429,7 @@
             currentCumProfit += netProfit;
 
             if (row.prize > 0) itmCount++;
-            if (row.rank === 1) winCount++;
 
-            // 차트 라벨을 숫자 형태로만 푸시
             labels.push(absoluteIndex);
             cumProfitData.push(currentCumProfit);
 
@@ -500,13 +497,13 @@
         }
 
         const itmRate = totalEntries > 0 ? (itmCount / totalEntries) * 100 : 0;
-        const winRate = totalEntries > 0 ? (winCount / totalEntries) * 100 : 0;
         const totalNetProfit = totalPrize - totalBuyinCost;
         const totalRoi = totalBuyinCost > 0 ? (totalNetProfit / totalBuyinCost) * 100 : 0;
+        const abi = totalEntries > 0 ? (totalBuyinCost / totalEntries) : 0;
 
         document.getElementById('statCount').innerText = totalEntries.toLocaleString();
+        document.getElementById('statAbi').innerText = Math.round(abi).toLocaleString();
         document.getElementById('statItm').innerText = itmRate.toFixed(1) + '%';
-        document.getElementById('statWin').innerText = winRate.toFixed(1) + '%';
         
         const roiEl = document.getElementById('statRoi');
         roiEl.innerText = totalRoi.toFixed(1) + '%';
@@ -520,7 +517,6 @@
         Chart.defaults.color = '#b3b3b3'; 
         Chart.defaults.font.family = 'Pretendard';
 
-        // X축 스텝 사이즈 동적 계산 (데이터 개수에 따라 5의 배수 간격으로 대략 20개 내외 출력)
         let stepSize = 1;
         if (totalEntries > 20) {
             stepSize = Math.ceil((totalEntries / 20) / 5) * 5;
@@ -547,13 +543,11 @@
                 scales: {
                     x: {
                         ticks: {
-                            autoSkip: false, // 커스텀 콜백을 사용하기 위해 기본 스킵 기능 비활성화
+                            autoSkip: false, 
                             maxRotation: 0,
                             callback: function(value, index) {
                                 let absoluteIndex = index + 1;
-                                // 전체가 20개 이하일 땐 모든 눈금 표시
                                 if (totalEntries <= 20) return absoluteIndex;
-                                // 계산된 stepSize(5, 10, 50 등)로 나누어 떨어지는 구간만 눈금 표시
                                 return (absoluteIndex % stepSize === 0) ? absoluteIndex : null;
                             }
                         }
