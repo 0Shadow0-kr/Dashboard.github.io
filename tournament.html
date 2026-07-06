@@ -10,6 +10,7 @@
             --bg-color: #121212; --card-bg: #1e1e1e; --text-main: #ffffff;
             --text-sub: #b3b3b3; --accent: #f6c000;
             --hands-color: #448aff; --win-color: #03dac6; --lose-color: #cf6679;
+            --ft-color: #bb86fc; /* FT 배지용 보라색 추가 */
         }
         body { font-family: 'Pretendard', sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -69,12 +70,15 @@
         table { width: 100%; border-collapse: collapse; text-align: right; }
         th, td { padding: 12px 10px; border-bottom: 1px solid #333; transition: 0.3s; vertical-align: middle; }
         th { color: var(--text-sub); text-align: right; font-size: 14px; }
-        th:first-child, td:first-child { text-align: left; padding-left: 10px; }
-        th:nth-child(2), td:nth-child(2) { text-align: left; font-weight: bold; color: #fff; }
+        
+        th:first-child, td:first-child { text-align: center; font-weight: bold; color: var(--accent); width: 50px; }
+        th:nth-child(2), td:nth-child(2) { text-align: center; color: var(--text-sub); }
+        th:nth-child(3), td:nth-child(3) { text-align: left; font-weight: bold; color: #fff; }
         th:last-child, td:last-child { text-align: center; width: 120px; }
         
         .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px; }
         .badge-win { background-color: var(--accent); color: #000; }
+        .badge-ft { background-color: rgba(187, 134, 252, 0.2); color: var(--ft-color); border: 1px solid var(--ft-color); } /* FT 배지 스타일 */
         .badge-itm { background-color: rgba(3, 218, 198, 0.2); color: var(--win-color); border: 1px solid var(--win-color); }
 
         .action-btns { display: flex; gap: 5px; justify-content: center; width: 100%; }
@@ -221,6 +225,7 @@
         <table>
             <thead>
                 <tr>
+                    <th>회차</th>
                     <th>날짜</th>
                     <th>토너먼트 명</th>
                     <th>등수</th>
@@ -412,18 +417,17 @@
         const cumProfitData = [];
         let currentCumProfit = 0;
         
-        // 날짜 필터값 가져오기
         const filterDateEl = document.getElementById('historyDateFilter');
         const filterDate = filterDateEl ? filterDateEl.value : '';
         
         const tbody = document.getElementById('dataTableBody'); 
         tbody.innerHTML = '';
 
-        data.forEach(row => {
+        data.forEach((row, index) => {
+            const absoluteIndex = index + 1; 
             const entriesCount = row.entries || 1;
             const rowTotalBuyin = row.buyin * entriesCount;
             
-            // 요약/차트용 통계는 전체 데이터 기준으로 계산
             totalBuyinCost += rowTotalBuyin;
             totalPrize += row.prize;
             const netProfit = row.prize - rowTotalBuyin;
@@ -432,10 +436,9 @@
             if (row.prize > 0) itmCount++;
             if (row.rank === 1) winCount++;
 
-            labels.push(row.date);
+            labels.push(absoluteIndex + '회');
             cumProfitData.push(currentCumProfit);
 
-            // 필터링 적용 (테이블 렌더링 생략 여부 결정)
             if (filterDate && row.date !== filterDate) {
                 return; 
             }
@@ -444,6 +447,7 @@
 
             if (editingId === row.id) {
                 tr.innerHTML = `
+                    <td>${absoluteIndex}</td>
                     <td><input type="text" id="edit-date-${row.id}" class="edit-input" value="${row.date}"></td>
                     <td><input type="text" id="edit-name-${row.id}" class="edit-input edit-input-left" value="${row.name}"></td>
                     <td><input type="number" id="edit-rank-${row.id}" class="edit-input" value="${row.rank || ''}"></td>
@@ -466,13 +470,18 @@
             } 
             else {
                 let nameDisplay = row.name;
+                
+                // 등수에 따른 배지 표시 로직
                 if (row.rank === 1) {
                     nameDisplay += ` <span class="badge badge-win">WIN 🏆</span>`;
+                } else if (row.rank !== null && row.rank >= 2 && row.rank <= 9) {
+                    nameDisplay += ` <span class="badge badge-ft">FT 🟣</span>`;
                 } else if (row.prize > 0) {
                     nameDisplay += ` <span class="badge badge-itm">ITM 💸</span>`;
                 }
 
                 tr.innerHTML = `
+                    <td>${absoluteIndex}</td>
                     <td>${row.date}</td>
                     <td>${nameDisplay}</td>
                     <td>${row.rank ? row.rank + '등' : '-'}</td>
@@ -491,7 +500,7 @@
         });
 
         if (tbody.innerHTML === '') {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 25px; color: var(--text-sub);">${filterDate ? '선택한 날짜의' : '저장된'} 참가 내역이 없습니다.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 25px; color: var(--text-sub);">${filterDate ? '선택한 날짜의' : '저장된'} 참가 내역이 없습니다.</td></tr>`;
         }
 
         const itmRate = totalEntries > 0 ? (itmCount / totalEntries) * 100 : 0;
@@ -537,7 +546,6 @@
         });
     }
 
-    // CSV 파일 내보내기 함수
     window.exportAllTourneyPresets = function() {
         const keys = ['wplTourney_preset1', 'wplTourney_preset2', 'wplTourney_preset3'];
         let csvContent = "프리셋 이름,날짜,토너먼트 명,등수,1회 바이인,엔트리 횟수,획득 상금\n";
@@ -567,7 +575,6 @@
         document.body.removeChild(link);
     };
 
-    // CSV 파일 불러오기 함수
     window.importAllTourneyPresets = function(event) {
         const file = event.target.files[0];
         if (!file) return;
