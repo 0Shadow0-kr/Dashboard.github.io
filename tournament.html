@@ -372,9 +372,14 @@
 
     function initTourneyDatalist() {
         const datalist = document.getElementById('tourneyList');
-        tourneyScheduleData.forEach(row => {
+        
+        // Set을 사용하여 토너먼트 이름의 중복을 제거합니다.
+        const uniqueNames = [...new Set(tourneyScheduleData.map(row => row[2]))];
+        
+        // 중복이 제거된 고유한 이름들만 리스트에 추가합니다.
+        uniqueNames.forEach(name => {
             const option = document.createElement('option');
-            option.value = row[2]; // 토너먼트 명
+            option.value = name;
             datalist.appendChild(option);
         });
     }
