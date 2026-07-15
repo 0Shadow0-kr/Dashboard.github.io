@@ -156,7 +156,6 @@
                 <th>토너먼트명</th>
                 <th>타입</th>
                 <th>바이인</th>
-                <th>상금</th>
             </tr>
         </thead>
         <tbody id="tableBody">
@@ -164,7 +163,7 @@
     </table>
 
     <script>
-        // 상금을 만, 억 단위로 변환해 주는 함수
+        // 금액을 만, 억 단위로 변환해 주는 함수
         function formatKoreanCurrency(numStr) {
             if (!numStr || numStr === '-') return numStr;
             let num = parseInt(numStr.replace(/,/g, ''), 10);
@@ -192,7 +191,6 @@
         // 20BB 레지 시간 계산 (WPL 휴식 시간 룰 적용)
         function calculate20BBRegTime(startTime, name) {
             let durationMinutes = null;
-            // 우선순위에 맞춰 터보 및 미니 등 세부 조건부터 필터링합니다.
             if (name.includes("워밍업 터보")) durationMinutes = 20;
             else if (name.includes("스텝업") && name.includes("터보")) durationMinutes = 20; 
             else if (name.includes("루키스 터보")) durationMinutes = 8;
@@ -269,7 +267,6 @@
             return `${hh}:${mm}`;
         }
 
-        // 업데이트된 원본 데이터 배열 (스크린샷 기준)
         const rawData = [
             ["매일", "00:00", "비기너스 4억 GTD", "NLH", "700,000", "400,000,000"],
             ["매일", "00:00", "클래식 500억 GTD", "NLH", "270,000,000", "50,000,000,000"],
@@ -396,14 +393,13 @@
             ["매일", "23:30", "데일리 스페셜 600억 GTD", "NLH", "300,000,000", "60,000,000,000"]
         ];
 
-        // 객체 형태로 데이터 파싱 (20BB 및 레잇 레지 시간 포함)
+        // 객체 형태로 데이터 파싱
         const tournaments = rawData.map(row => {
             let buyInRaw = row[4].replace(/,/g, ''); 
             let buyInValue = buyInRaw === '-' ? 0 : parseInt(buyInRaw, 10); 
             
             let startTime = row[1];
             let name = row[2];
-            let formattedPrize = formatKoreanCurrency(row[5]);
             let actual20BBRegTime = calculate20BBRegTime(startTime, name);
             let actualLateRegTime = calculateLateRegTime(startTime, name);
 
@@ -415,8 +411,7 @@
                 name: name,
                 type: row[3],
                 buyInString: formatKoreanCurrency(row[4]),
-                buyInValue: buyInValue,
-                prize: formattedPrize
+                buyInValue: buyInValue
             };
         });
 
@@ -427,8 +422,8 @@
             tableBody.innerHTML = '';
             
             if (data.length === 0) {
-                // 열이 7개로 증가했으므로 colspan="7" 적용
-                tableBody.innerHTML = '<tr><td colspan="7">해당 조건에 맞는 토너먼트가 없습니다.</td></tr>';
+                // 상금 열이 지워져 총 6개의 열이므로 colspan="6" 적용
+                tableBody.innerHTML = '<tr><td colspan="6">해당 조건에 맞는 토너먼트가 없습니다.</td></tr>';
                 return;
             }
 
@@ -441,7 +436,6 @@
                     <td>${t.name}</td>
                     <td>${t.type}</td>
                     <td>${t.buyInString}</td>
-                    <td>${t.prize}</td>
                 `;
                 tableBody.appendChild(tr);
             });
