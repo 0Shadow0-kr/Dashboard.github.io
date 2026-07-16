@@ -95,6 +95,12 @@
         th {
             background-color: #343a40;
             color: white;
+            cursor: pointer; /* 클릭 가능한 커서로 변경 */
+            user-select: none; /* 텍스트 선택 방지 */
+            transition: background-color 0.2s;
+        }
+        th:hover {
+            background-color: #495057; /* 마우스 오버 시 색상 변경 */
         }
         tr:nth-child(even) {
             background-color: #f2f2f2;
@@ -109,7 +115,7 @@
             font-weight: bold;
         }
         
-        /* 20BB 레지 강조 텍스트용 클래스 추가 */
+        /* 20BB 레지 강조 텍스트용 클래스 */
         .badge-20bb {
             color: #28a745;
             font-weight: bold;
@@ -143,20 +149,21 @@
             </select>
         </div>
 
-        <button onclick="filterTable()">검색</button>
+        <button onclick="applyFilter()">검색</button>
         <button class="reset-btn" onclick="resetFilter()">초기화</button>
     </div>
 
     <table>
         <thead>
+            <!-- 각 열을 클릭하면 sortTable 함수가 실행됨 -->
             <tr>
-                <th>시간</th>
-                <th>20BB Regi.</th>
-                <th>Max Late Regi.</th>
-                <th>토너먼트명</th>
-                <th>타입</th>
-                <th>바이인</th>
-                <th>프라이즈율</th> <!-- 추가된 열 -->
+                <th onclick="sortTable(0)" data-colname="시간">시간</th>
+                <th onclick="sortTable(1)" data-colname="20BB Regi.">20BB Regi.</th>
+                <th onclick="sortTable(2)" data-colname="Max Late Regi.">Max Late Regi.</th>
+                <th onclick="sortTable(3)" data-colname="토너먼트명">토너먼트명</th>
+                <th onclick="sortTable(4)" data-colname="타입">타입</th>
+                <th onclick="sortTable(5)" data-colname="바이인">바이인</th>
+                <th onclick="sortTable(6)" data-colname="프라이즈율">프라이즈율</th>
             </tr>
         </thead>
         <tbody id="tableBody">
@@ -213,11 +220,8 @@
             let currentMinuteOfDay = (hours * 60) + minutes;
             let remainingDuration = durationMinutes;
 
-            // 1분씩 시간을 흘려보내며 계산
             while (remainingDuration > 0) {
                 let currentMinOfHour = currentMinuteOfDay % 60;
-                
-                // 매시 55분부터 59분까지는 휴식 시간이므로 플레이 타임이 줄지 않음
                 if (currentMinOfHour >= 55 && currentMinOfHour <= 59) {
                     currentMinuteOfDay++;
                 } else {
@@ -255,7 +259,6 @@
 
             if (durationMinutes === null) return "-";
             
-            // 실제 시간 계산
             let [hours, minutes] = startTime.split(':').map(Number);
             let totalMinutes = (hours * 60) + minutes + durationMinutes;
             
@@ -293,7 +296,8 @@
             ["매일", "04:30", "클래식 55억 GTD", "NLH", "70,000,000", "5,500,000,000"],
             ["매일", "05:00", "프리롤 3천만 GTD", "Freeroll(NLH)", "-", "30,000,000"],
             ["매일", "05:00", "워밍업 35억 GTD", "NLH", "50,000,000", "3,500,000,000"],
-            ["매일", "05:15", "루키스 터보 3.5억 GTD", "NLH", "3,000,000", "350,000,000"],
+            // 바이인 금액 오타 수정: 3,000,000,000 -> 3,500,000
+            ["매일", "05:15", "루키스 터보 3.5억 GTD", "NLH", "3,500,000", "350,000,000"],
             ["매일", "05:30", "스텝업 바운티 터보 10억 GTD", "Bounty(P)(NLH)", "10,000,000", "1,000,000,000"],
             ["매일", "06:00", "비기너스 4천만 GTD", "NLH", "100,000", "40,000,000"],
             ["매일", "06:00", "워밍업 35억 GTD", "NLH", "50,000,000", "3,500,000,000"],
@@ -394,8 +398,8 @@
             ["매일", "23:30", "데일리 스페셜 600억 GTD", "NLH", "300,000,000", "60,000,000,000"]
         ];
 
-        // 객체 형태로 데이터 파싱 (프라이즈율 계산 추가)
-        const tournaments = rawData.map(row => {
+        // 객체 형태로 데이터 파싱
+        const tournaments = rawData.map((row, index) => {
             let buyInRaw = row[4].replace(/,/g, ''); 
             let buyInValue = buyInRaw === '-' ? 0 : parseInt(buyInRaw, 10); 
             
@@ -407,14 +411,21 @@
             let actual20BBRegTime = calculate20BBRegTime(startTime, name);
             let actualLateRegTime = calculateLateRegTime(startTime, name);
 
-            // 프라이즈율 계산 (반올림하여 소수점 첫째 자리까지 표시, 0으로 나누기 방지)
+            // 프라이즈율 계산 
             let prizeRatio = "-";
+            let prizeRatioValue = 0; // 기본 숫자값 (프리롤은 0 또는 가장 뒤로 밀리도록 설정)
+
             if (buyInValue > 0) {
                 let ratio = gtdValue / buyInValue;
                 prizeRatio = (Math.round(ratio * 10) / 10).toLocaleString() + "배";
+                prizeRatioValue = ratio; 
+            } else if (buyInRaw === '-') {
+                // 프리롤 등 바이인이 없는 경우 오름차순 시 맨 아래 배치되도록 무한대 값 적용
+                prizeRatioValue = Infinity; 
             }
 
             return {
+                originalIndex: index, // 초기 정렬용 인덱스 저장
                 schedule: row[0],
                 time: startTime,
                 regi20BB: actual20BBRegTime,
@@ -423,9 +434,17 @@
                 type: row[3],
                 buyInString: formatKoreanCurrency(row[4]),
                 buyInValue: buyInValue,
-                prizeRatio: prizeRatio // 새로 추가된 속성
+                prizeRatio: prizeRatio,
+                prizeRatioValue: prizeRatioValue 
             };
         });
+
+        // 현재 화면에 띄워질(필터링/정렬된) 데이터 배열
+        let currentData = [...tournaments];
+
+        // 정렬 관련 상태
+        let currentSortCol = -1; // 현재 정렬된 열의 번호 (0~6)
+        let sortDirection = 'none'; // 'asc'(오름차순), 'desc'(내림차순), 'none'(기본)
 
         const tableBody = document.getElementById('tableBody');
 
@@ -434,7 +453,6 @@
             tableBody.innerHTML = '';
             
             if (data.length === 0) {
-                // 프라이즈율 열이 추가되어 총 7개의 열이므로 colspan="7" 적용
                 tableBody.innerHTML = '<tr><td colspan="7">해당 조건에 맞는 토너먼트가 없습니다.</td></tr>';
                 return;
             }
@@ -448,14 +466,76 @@
                     <td>${t.name}</td>
                     <td>${t.type}</td>
                     <td>${t.buyInString}</td>
-                    <td>${t.prizeRatio}</td> <!-- 추가된 열 데이터 -->
+                    <td>${t.prizeRatio}</td>
                 `;
                 tableBody.appendChild(tr);
             });
         }
 
-        // 필터링 로직
-        function filterTable() {
+        // 정렬 로직
+        function sortTable(colIndex) {
+            const tableHeaders = document.querySelectorAll('th');
+            
+            // 모든 헤더의 화살표(▲/▼) 초기화
+            tableHeaders.forEach(th => {
+                let text = th.getAttribute('data-colname');
+                th.innerHTML = text; 
+            });
+
+            // 상태 변경 로직: 아무정렬X -> 오름차순(asc) -> 내림차순(desc) -> 아무정렬X(none)
+            if (currentSortCol === colIndex) {
+                if (sortDirection === 'none') sortDirection = 'asc';
+                else if (sortDirection === 'asc') sortDirection = 'desc';
+                else if (sortDirection === 'desc') sortDirection = 'none';
+            } else {
+                currentSortCol = colIndex;
+                sortDirection = 'asc';
+            }
+
+            // 실질적 정렬 수행
+            if (sortDirection === 'none') {
+                // 원래 순서(originalIndex)로 되돌림
+                currentData.sort((a, b) => a.originalIndex - b.originalIndex);
+            } else {
+                const isAsc = sortDirection === 'asc' ? 1 : -1;
+                
+                currentData.sort((a, b) => {
+                    let valA, valB;
+                    
+                    switch(colIndex) {
+                        case 0: valA = a.time; valB = b.time; break;
+                        case 1: valA = a.regi20BB; valB = b.regi20BB; break;
+                        case 2: valA = a.lateReg; valB = b.lateReg; break;
+                        case 3: valA = a.name; valB = b.name; break;
+                        case 4: valA = a.type; valB = b.type; break;
+                        case 5: valA = a.buyInValue; valB = b.buyInValue; break;
+                        case 6: valA = a.prizeRatioValue; valB = b.prizeRatioValue; break;
+                    }
+
+                    // 시간('-' 표기된 곳을 맨 아래로)
+                    if (valA === '-' && valB !== '-') return 1;
+                    if (valA !== '-' && valB === '-') return -1;
+
+                    // 문자열 기반 열(시간, 이름, 타입) 비교
+                    if (typeof valA === 'string') {
+                        return valA.localeCompare(valB) * isAsc;
+                    } 
+                    // 숫자 기반 열(바이인, 프라이즈율) 비교
+                    else {
+                        return (valA - valB) * isAsc;
+                    }
+                });
+
+                // 현재 정렬 중인 열에만 화살표 표시
+                const indicator = sortDirection === 'asc' ? ' ▲' : ' ▼';
+                tableHeaders[colIndex].innerHTML += indicator;
+            }
+
+            renderTable(currentData);
+        }
+
+        // 검색(필터) 로직 적용 시
+        function applyFilter() {
             const minInput = document.getElementById('minBuyInInput').value;
             const minUnit = parseInt(document.getElementById('minUnitSelect').value, 10);
             
@@ -465,22 +545,38 @@
             const minBuyIn = minInput ? parseFloat(minInput) * minUnit : 0; 
             const maxBuyIn = maxInput ? parseFloat(maxInput) * maxUnit : Infinity; 
 
-            const filteredData = tournaments.filter(t => t.buyInValue >= minBuyIn && t.buyInValue <= maxBuyIn);
+            // 조건에 맞는 데이터만 currentData로 덮어쓰기
+            currentData = tournaments.filter(t => t.buyInValue >= minBuyIn && t.buyInValue <= maxBuyIn);
             
-            renderTable(filteredData);
+            // 필터를 새로 적용할 때 정렬 상태를 강제로 초기화
+            currentSortCol = -1;
+            sortDirection = 'none';
+            const tableHeaders = document.querySelectorAll('th');
+            tableHeaders.forEach(th => th.innerHTML = th.getAttribute('data-colname'));
+            
+            renderTable(currentData);
         }
 
-        // 초기화 버튼 로직
+        // 초기화 버튼 클릭 시
         function resetFilter() {
             document.getElementById('minBuyInInput').value = '';
             document.getElementById('minUnitSelect').value = '10000';
             document.getElementById('maxBuyInInput').value = '';
             document.getElementById('maxUnitSelect').value = '10000';
-            renderTable(tournaments);
+            
+            currentData = [...tournaments];
+            
+            // 정렬 상태도 초기화
+            currentSortCol = -1;
+            sortDirection = 'none';
+            const tableHeaders = document.querySelectorAll('th');
+            tableHeaders.forEach(th => th.innerHTML = th.getAttribute('data-colname'));
+            
+            renderTable(currentData);
         }
 
-        // 초기 화면 렌더링
-        renderTable(tournaments);
+        // 맨 처음 문서 로드 시 렌더링
+        renderTable(currentData);
     </script>
 </body>
 </html>
