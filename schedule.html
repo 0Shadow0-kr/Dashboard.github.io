@@ -156,6 +156,7 @@
                 <th>토너먼트명</th>
                 <th>타입</th>
                 <th>바이인</th>
+                <th>프라이즈율</th> <!-- 추가된 열 -->
             </tr>
         </thead>
         <tbody id="tableBody">
@@ -333,7 +334,7 @@
             ["매일", "14:00", "클래식 370억 GTD", "NLH", "370,000,000", "37,000,000,000"],
             ["매일", "14:15", "스텝업 터보 7억 GTD", "NLH", "6,000,000", "700,000,000"],
             ["매일", "14:15", "클래식 90억 GTD", "NLH", "80,000,000", "9,000,000,000"],
-            ["매일", "14:30", "워밍업 터보 24억 GTD", "NLH", "12,000,000, 2,400,000,000"],
+            ["매일", "14:30", "워밍업 터보 24억 GTD", "NLH", "12,000,000", "2,400,000,000"],
             ["매일", "14:30", "클래식 바운티 160억 GTD", "Bounty(P)(NLH)", "160,000,000", "16,000,000,000"],
             ["매일", "15:00", "프리롤 3천만 GTD", "Freeroll(NLH)", "-", "30,000,000"],
             ["매일", "15:00", "클래식 400억 GTD", "NLH", "220,000,000", "40,000,000,000"],
@@ -393,15 +394,25 @@
             ["매일", "23:30", "데일리 스페셜 600억 GTD", "NLH", "300,000,000", "60,000,000,000"]
         ];
 
-        // 객체 형태로 데이터 파싱
+        // 객체 형태로 데이터 파싱 (프라이즈율 계산 추가)
         const tournaments = rawData.map(row => {
             let buyInRaw = row[4].replace(/,/g, ''); 
             let buyInValue = buyInRaw === '-' ? 0 : parseInt(buyInRaw, 10); 
+            
+            let gtdRaw = row[5].replace(/,/g, '');
+            let gtdValue = gtdRaw === '-' ? 0 : parseInt(gtdRaw, 10);
             
             let startTime = row[1];
             let name = row[2];
             let actual20BBRegTime = calculate20BBRegTime(startTime, name);
             let actualLateRegTime = calculateLateRegTime(startTime, name);
+
+            // 프라이즈율 계산 (반올림하여 소수점 첫째 자리까지 표시, 0으로 나누기 방지)
+            let prizeRatio = "-";
+            if (buyInValue > 0) {
+                let ratio = gtdValue / buyInValue;
+                prizeRatio = (Math.round(ratio * 10) / 10).toLocaleString() + "배";
+            }
 
             return {
                 schedule: row[0],
@@ -411,7 +422,8 @@
                 name: name,
                 type: row[3],
                 buyInString: formatKoreanCurrency(row[4]),
-                buyInValue: buyInValue
+                buyInValue: buyInValue,
+                prizeRatio: prizeRatio // 새로 추가된 속성
             };
         });
 
@@ -422,8 +434,8 @@
             tableBody.innerHTML = '';
             
             if (data.length === 0) {
-                // 상금 열이 지워져 총 6개의 열이므로 colspan="6" 적용
-                tableBody.innerHTML = '<tr><td colspan="6">해당 조건에 맞는 토너먼트가 없습니다.</td></tr>';
+                // 프라이즈율 열이 추가되어 총 7개의 열이므로 colspan="7" 적용
+                tableBody.innerHTML = '<tr><td colspan="7">해당 조건에 맞는 토너먼트가 없습니다.</td></tr>';
                 return;
             }
 
@@ -436,6 +448,7 @@
                     <td>${t.name}</td>
                     <td>${t.type}</td>
                     <td>${t.buyInString}</td>
+                    <td>${t.prizeRatio}</td> <!-- 추가된 열 데이터 -->
                 `;
                 tableBody.appendChild(tr);
             });
