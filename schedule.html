@@ -81,6 +81,21 @@
         .reset-btn:hover {
             background-color: #5a6268;
         }
+        
+        /* 바운티 안 보기 체크박스용 스타일 */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-left: 15px;
+            cursor: pointer;
+        }
+        .checkbox-group input {
+            margin-right: 5px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+        }
+        
         table {
             width: 100%;
             border-collapse: collapse;
@@ -115,7 +130,7 @@
             font-weight: bold;
         }
         
-        /* 20BB 레지 강조 텍스트용 클래스 */
+        /* 20BB 레지 강조 텍스트용 클래스 추가 */
         .badge-20bb {
             color: #28a745;
             font-weight: bold;
@@ -151,11 +166,16 @@
 
         <button onclick="applyFilter()">검색</button>
         <button class="reset-btn" onclick="resetFilter()">초기화</button>
+        
+        <!-- 바운티 안 보기 체크박스 추가 -->
+        <label class="checkbox-group">
+            <input type="checkbox" id="hideBountyCheck" onchange="applyFilter()">
+            <strong>바운티 안 보기</strong>
+        </label>
     </div>
 
     <table>
         <thead>
-            <!-- 각 열을 클릭하면 sortTable 함수가 실행됨 -->
             <tr>
                 <th onclick="sortTable(0)" data-colname="시간">시간</th>
                 <th onclick="sortTable(1)" data-colname="20BB Regi.">20BB Regi.</th>
@@ -296,7 +316,6 @@
             ["매일", "04:30", "클래식 55억 GTD", "NLH", "70,000,000", "5,500,000,000"],
             ["매일", "05:00", "프리롤 3천만 GTD", "Freeroll(NLH)", "-", "30,000,000"],
             ["매일", "05:00", "워밍업 35억 GTD", "NLH", "50,000,000", "3,500,000,000"],
-            // 바이인 금액 오타 수정: 3,000,000,000 -> 3,500,000
             ["매일", "05:15", "루키스 터보 3.5억 GTD", "NLH", "3,500,000", "350,000,000"],
             ["매일", "05:30", "스텝업 바운티 터보 10억 GTD", "Bounty(P)(NLH)", "10,000,000", "1,000,000,000"],
             ["매일", "06:00", "비기너스 4천만 GTD", "NLH", "100,000", "40,000,000"],
@@ -408,30 +427,30 @@
             
             let startTime = row[1];
             let name = row[2];
+            let type = row[3];
             let actual20BBRegTime = calculate20BBRegTime(startTime, name);
             let actualLateRegTime = calculateLateRegTime(startTime, name);
 
             // 프라이즈율 계산 
             let prizeRatio = "-";
-            let prizeRatioValue = 0; // 기본 숫자값 (프리롤은 0 또는 가장 뒤로 밀리도록 설정)
+            let prizeRatioValue = 0;
 
             if (buyInValue > 0) {
                 let ratio = gtdValue / buyInValue;
                 prizeRatio = (Math.round(ratio * 10) / 10).toLocaleString() + "배";
                 prizeRatioValue = ratio; 
             } else if (buyInRaw === '-') {
-                // 프리롤 등 바이인이 없는 경우 오름차순 시 맨 아래 배치되도록 무한대 값 적용
                 prizeRatioValue = Infinity; 
             }
 
             return {
-                originalIndex: index, // 초기 정렬용 인덱스 저장
+                originalIndex: index,
                 schedule: row[0],
                 time: startTime,
                 regi20BB: actual20BBRegTime,
                 lateReg: actualLateRegTime,
                 name: name,
-                type: row[3],
+                type: type,
                 buyInString: formatKoreanCurrency(row[4]),
                 buyInValue: buyInValue,
                 prizeRatio: prizeRatio,
@@ -439,12 +458,12 @@
             };
         });
 
-        // 현재 화면에 띄워질(필터링/정렬된) 데이터 배열
+        // 현재 화면에 띄워질 데이터 배열
         let currentData = [...tournaments];
 
         // 정렬 관련 상태
-        let currentSortCol = -1; // 현재 정렬된 열의 번호 (0~6)
-        let sortDirection = 'none'; // 'asc'(오름차순), 'desc'(내림차순), 'none'(기본)
+        let currentSortCol = -1; 
+        let sortDirection = 'none';
 
         const tableBody = document.getElementById('tableBody');
 
@@ -476,13 +495,11 @@
         function sortTable(colIndex) {
             const tableHeaders = document.querySelectorAll('th');
             
-            // 모든 헤더의 화살표(▲/▼) 초기화
             tableHeaders.forEach(th => {
                 let text = th.getAttribute('data-colname');
                 th.innerHTML = text; 
             });
 
-            // 상태 변경 로직: 아무정렬X -> 오름차순(asc) -> 내림차순(desc) -> 아무정렬X(none)
             if (currentSortCol === colIndex) {
                 if (sortDirection === 'none') sortDirection = 'asc';
                 else if (sortDirection === 'asc') sortDirection = 'desc';
@@ -492,9 +509,7 @@
                 sortDirection = 'asc';
             }
 
-            // 실질적 정렬 수행
             if (sortDirection === 'none') {
-                // 원래 순서(originalIndex)로 되돌림
                 currentData.sort((a, b) => a.originalIndex - b.originalIndex);
             } else {
                 const isAsc = sortDirection === 'asc' ? 1 : -1;
@@ -512,21 +527,16 @@
                         case 6: valA = a.prizeRatioValue; valB = b.prizeRatioValue; break;
                     }
 
-                    // 시간('-' 표기된 곳을 맨 아래로)
                     if (valA === '-' && valB !== '-') return 1;
                     if (valA !== '-' && valB === '-') return -1;
 
-                    // 문자열 기반 열(시간, 이름, 타입) 비교
                     if (typeof valA === 'string') {
                         return valA.localeCompare(valB) * isAsc;
-                    } 
-                    // 숫자 기반 열(바이인, 프라이즈율) 비교
-                    else {
+                    } else {
                         return (valA - valB) * isAsc;
                     }
                 });
 
-                // 현재 정렬 중인 열에만 화살표 표시
                 const indicator = sortDirection === 'asc' ? ' ▲' : ' ▼';
                 tableHeaders[colIndex].innerHTML += indicator;
             }
@@ -534,7 +544,7 @@
             renderTable(currentData);
         }
 
-        // 검색(필터) 로직 적용 시
+        // 필터 로직 적용 (검색 버튼 클릭 및 체크박스 변경 시)
         function applyFilter() {
             const minInput = document.getElementById('minBuyInInput').value;
             const minUnit = parseInt(document.getElementById('minUnitSelect').value, 10);
@@ -542,13 +552,26 @@
             const maxInput = document.getElementById('maxBuyInInput').value;
             const maxUnit = parseInt(document.getElementById('maxUnitSelect').value, 10);
 
+            const hideBounty = document.getElementById('hideBountyCheck').checked;
+
             const minBuyIn = minInput ? parseFloat(minInput) * minUnit : 0; 
             const maxBuyIn = maxInput ? parseFloat(maxInput) * maxUnit : Infinity; 
 
-            // 조건에 맞는 데이터만 currentData로 덮어쓰기
-            currentData = tournaments.filter(t => t.buyInValue >= minBuyIn && t.buyInValue <= maxBuyIn);
+            currentData = tournaments.filter(t => {
+                const isBuyInValid = t.buyInValue >= minBuyIn && t.buyInValue <= maxBuyIn;
+                
+                // 바운티 안 보기 체크 시 타입 또는 토너먼트명에 'Bounty' 또는 '바운티'가 포함되어 있으면 제외
+                let isBountyValid = true;
+                if (hideBounty) {
+                    if (t.type.includes("Bounty") || t.name.includes("바운티")) {
+                        isBountyValid = false;
+                    }
+                }
+
+                return isBuyInValid && isBountyValid;
+            });
             
-            // 필터를 새로 적용할 때 정렬 상태를 강제로 초기화
+            // 필터를 새로 적용할 때 정렬 상태 초기화
             currentSortCol = -1;
             sortDirection = 'none';
             const tableHeaders = document.querySelectorAll('th');
@@ -563,10 +586,11 @@
             document.getElementById('minUnitSelect').value = '10000';
             document.getElementById('maxBuyInInput').value = '';
             document.getElementById('maxUnitSelect').value = '10000';
+            document.getElementById('hideBountyCheck').checked = false; // 체크박스 해제
             
             currentData = [...tournaments];
             
-            // 정렬 상태도 초기화
+            // 정렬 상태 초기화
             currentSortCol = -1;
             sortDirection = 'none';
             const tableHeaders = document.querySelectorAll('th');
