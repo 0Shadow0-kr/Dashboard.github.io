@@ -582,8 +582,11 @@
         data.forEach((row, index) => {
             const absoluteIndex = index + 1; 
             const entriesCount = row.entries || 1;
+        
+            totalEntries += entriesCount; // <--- 여기서 실제 참가 횟수(리엔트리 포함)를 누적해서 더해줍니다.
+        
             const rowTotalBuyin = row.buyin * entriesCount;
-            
+        
             totalBuyinCost += rowTotalBuyin;
             totalPrize += row.prize;
             const netProfit = row.prize - rowTotalBuyin;
