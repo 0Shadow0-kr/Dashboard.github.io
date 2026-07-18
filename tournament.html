@@ -564,7 +564,8 @@
         const storageKey = getStorageKey();
         const data = JSON.parse(localStorage.getItem(storageKey)) || [];
     
-        let totalEntries = 0; // 0으로 초기화합니다.
+        let totalTournaments = data.length; // UI 표시용 및 ITM 계산용 (1줄 = 1게임)
+        let totalBullets = 0; // ABI 계산용 (리엔트리 포함)
         let totalBuyinCost = 0;
         let totalPrize = 0;
         let itmCount = 0;
@@ -583,7 +584,7 @@
             const absoluteIndex = index + 1; 
             const entriesCount = row.entries || 1;
         
-            totalEntries += entriesCount; // <--- 여기서 실제 참가 횟수(리엔트리 포함)를 누적해서 더해줍니다.
+            totalBullets += entriesCount; // ABI 계산을 위해 총알(엔트리) 개수 누적
         
             const rowTotalBuyin = row.buyin * entriesCount;
         
@@ -660,12 +661,12 @@
             tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 25px; color: var(--text-sub);">${filterDate ? '선택한 날짜의' : '저장된'} 참가 내역이 없습니다.</td></tr>`;
         }
 
-        const itmRate = totalEntries > 0 ? (itmCount / totalEntries) * 100 : 0;
+        const itmRate = totalTournaments > 0 ? (itmCount / totalTournaments) * 100 : 0;
         const totalNetProfit = totalPrize - totalBuyinCost;
         const totalRoi = totalBuyinCost > 0 ? (totalNetProfit / totalBuyinCost) * 100 : 0;
-        const abi = totalEntries > 0 ? (totalBuyinCost / totalEntries) : 0;
+        const abi = totalBullets > 0 ? (totalBuyinCost / totalBullets) : 0;
 
-        document.getElementById('statCount').innerText = totalEntries.toLocaleString();
+        document.getElementById('statCount').innerText = totalTournaments.toLocaleString();
         document.getElementById('statAbi').innerText = Math.round(abi).toLocaleString();
         document.getElementById('statItm').innerText = itmRate.toFixed(1) + '%';
         
@@ -682,8 +683,8 @@
         Chart.defaults.font.family = 'Pretendard';
 
         let stepSize = 1;
-        if (totalEntries > 20) {
-            stepSize = Math.ceil((totalEntries / 20) / 5) * 5;
+        if (totalTournaments > 20) {
+            stepSize = Math.ceil((totalTournaments / 20) / 5) * 5;
         }
 
         const ctx1 = document.getElementById('profitChart').getContext('2d');
@@ -711,7 +712,7 @@
                             maxRotation: 0,
                             callback: function(value, index) {
                                 let absoluteIndex = index + 1;
-                                if (totalEntries <= 20) return absoluteIndex;
+                                if (totalTournaments <= 20) return absoluteIndex;
                                 return (absoluteIndex % stepSize === 0) ? absoluteIndex : null;
                             }
                         }
