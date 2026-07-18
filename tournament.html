@@ -563,8 +563,8 @@
     function updateDashboard() {
         const storageKey = getStorageKey();
         const data = JSON.parse(localStorage.getItem(storageKey)) || [];
-        
-        let totalEntries = data.length;
+    
+        let totalEntries = 0; // 0으로 초기화합니다.
         let totalBuyinCost = 0;
         let totalPrize = 0;
         let itmCount = 0;
