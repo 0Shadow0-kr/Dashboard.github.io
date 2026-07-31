@@ -40,8 +40,11 @@
         .input-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
         .input-group { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 150px; }
         .input-group label { font-weight: bold; color: var(--accent); font-size: 14px; }
-        .input-group input { padding: 12px; background: #1a1a1a; color: #fff; border: 1px solid #444; border-radius: 6px; font-size: 16px; font-weight: bold; text-align: center; }
+        .input-group input { padding: 12px; background: #1a1a1a; color: #fff; border: 1px solid #444; border-radius: 6px; font-size: 16px; font-weight: bold; text-align: center; width: 100%; box-sizing: border-box; }
         .input-group input:focus { outline: none; border-color: var(--accent); }
+        
+        /* Flex wrapper for inputs that sit side-by-side */
+        .input-flex-row { display: flex; gap: 8px; align-items: center; width: 100%; }
 
         .btn-action-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
         button { flex: 1; padding: 15px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; min-width: 150px; }
@@ -165,8 +168,12 @@
                 <datalist id="tourneyList"></datalist>
             </div>
             <div class="input-group">
-                <label for="tRank">등수 (선택)</label>
-                <input type="number" id="tRank" placeholder="ex) 1">
+                <label>등수 / 총 명수 (선택)</label>
+                <div class="input-flex-row">
+                    <input type="number" id="tRank" placeholder="내 등수">
+                    <span style="color:#888;">/</span>
+                    <input type="number" id="tTotalPlayers" placeholder="총 명수">
+                </div>
             </div>
         </div>
         <div class="input-row">
@@ -225,7 +232,7 @@
                     <th>회차</th>
                     <th>날짜</th>
                     <th>토너먼트 명</th>
-                    <th>등수</th>
+                    <th style="text-align:center;">등수 / 참가자</th>
                     <th>바이인 (엔트리)</th>
                     <th>획득 상금</th>
                     <th>순수익</th>
@@ -461,6 +468,7 @@
     function clearInputs() {
         document.getElementById('tName').value = '';
         document.getElementById('tRank').value = '';
+        document.getElementById('tTotalPlayers').value = '';
         document.getElementById('tBuyin').value = '';
         document.getElementById('tEntries').value = '1';
         document.getElementById('tPrize').value = '';
@@ -470,6 +478,7 @@
         const dateStr = document.getElementById('tDate').value.trim();
         const nameStr = document.getElementById('tName').value.trim() || '이름 없음';
         const rankVal = document.getElementById('tRank').value.trim() ? parseInt(document.getElementById('tRank').value) : null;
+        const totalVal = document.getElementById('tTotalPlayers').value.trim() ? parseInt(document.getElementById('tTotalPlayers').value) : null;
         const buyin = parseNum(document.getElementById('tBuyin').value);
         const entries = parseInt(document.getElementById('tEntries').value) || 1;
         const prize = parseNum(document.getElementById('tPrize').value);
@@ -484,6 +493,7 @@
             date: dateStr, 
             name: nameStr,
             rank: rankVal,
+            totalPlayers: totalVal,
             buyin: buyin, 
             entries: entries,
             prize: prize 
@@ -509,8 +519,13 @@
     window.saveEdit = function(id) {
         const dateInput = document.getElementById('edit-date-' + id).value.trim();
         const nameInput = document.getElementById('edit-name-' + id).value.trim() || '이름 없음';
+        
         const rankStr = document.getElementById('edit-rank-' + id).value.trim();
         const rankInput = rankStr ? parseInt(rankStr) : null;
+        
+        const totalStr = document.getElementById('edit-total-' + id).value.trim();
+        const totalInput = totalStr ? parseInt(totalStr) : null;
+
         const buyinInput = parseNum(document.getElementById('edit-buyin-' + id).value);
         const entriesInput = parseInt(document.getElementById('edit-entries-' + id).value) || 1;
         const prizeInput = parseNum(document.getElementById('edit-prize-' + id).value);
@@ -529,6 +544,7 @@
                 date: dateInput, 
                 name: nameInput, 
                 rank: rankInput, 
+                totalPlayers: totalInput,
                 buyin: buyinInput, 
                 entries: entriesInput,
                 prize: prizeInput 
@@ -609,7 +625,13 @@
                     <td>${absoluteIndex}</td>
                     <td><input type="text" id="edit-date-${row.id}" class="edit-input" value="${row.date}"></td>
                     <td><input type="text" id="edit-name-${row.id}" class="edit-input edit-input-left" value="${row.name}"></td>
-                    <td><input type="number" id="edit-rank-${row.id}" class="edit-input" value="${row.rank || ''}"></td>
+                    <td>
+                        <div class="flex-center">
+                            <input type="number" id="edit-rank-${row.id}" class="edit-input" value="${row.rank || ''}" style="width: 45px; text-align: center; padding: 6px 2px;">
+                            <span style="color:#888;">/</span>
+                            <input type="number" id="edit-total-${row.id}" class="edit-input" value="${row.totalPlayers || ''}" style="width: 55px; text-align: center; padding: 6px 2px;">
+                        </div>
+                    </td>
                     <td>
                         <div class="flex-center">
                             <input type="text" id="edit-buyin-${row.id}" class="edit-input" value="${row.buyin}" onkeyup="addCommas(this)" style="width: 70px;">
@@ -638,11 +660,20 @@
                     nameDisplay += ` <span class="badge badge-itm">ITM 💸</span>`;
                 }
 
+                let rankDisplay = '-';
+                if (row.rank && row.totalPlayers) {
+                    rankDisplay = `${row.rank}등 / ${row.totalPlayers}명`;
+                } else if (row.rank) {
+                    rankDisplay = `${row.rank}등`;
+                } else if (row.totalPlayers) {
+                    rankDisplay = `- / ${row.totalPlayers}명`;
+                }
+
                 tr.innerHTML = `
                     <td>${absoluteIndex}</td>
                     <td>${row.date}</td>
                     <td>${nameDisplay}</td>
-                    <td>${row.rank ? row.rank + '등' : '-'}</td>
+                    <td style="text-align: center;">${rankDisplay}</td>
                     <td style="color:var(--lose-color);">${row.buyin.toLocaleString()} <span style="font-size:0.85em; color:#888;">(x${entriesCount})</span></td>
                     <td style="color:var(--win-color);">${row.prize.toLocaleString()}</td>
                     <td class="${netProfit >= 0 ? 'positive' : 'negative'}">${netProfit.toLocaleString()}</td>
@@ -724,7 +755,8 @@
 
     window.exportAllTourneyPresets = function() {
         const keys = ['wplTourney_preset1', 'wplTourney_preset2', 'wplTourney_preset3'];
-        let csvContent = "프리셋 이름,날짜,토너먼트 명,등수,1회 바이인,엔트리 횟수,획득 상금\n";
+        // 총 명수 컬럼을 맨 뒤에 추가하여 하위호환성 유지
+        let csvContent = "프리셋 이름,날짜,토너먼트 명,등수,1회 바이인,엔트리 횟수,획득 상금,총 명수\n";
         
         const savedNames = JSON.parse(localStorage.getItem('wplTourneyPresetNames')) || {};
         const defaultNames = { 'wplTourney_preset1': '토너먼트 기록 1', 'wplTourney_preset2': '토너먼트 기록 2', 'wplTourney_preset3': '토너먼트 기록 3' };
@@ -736,7 +768,8 @@
             data.forEach(row => {
                 const safeName = row.name ? row.name.replace(/,/g, '') : '';
                 const rankVal = row.rank ? row.rank : '';
-                csvContent += `${presetName},${row.date},${safeName},${rankVal},${row.buyin},${row.entries},${row.prize}\n`;
+                const totalVal = row.totalPlayers ? row.totalPlayers : '';
+                csvContent += `${presetName},${row.date},${safeName},${rankVal},${row.buyin},${row.entries},${row.prize},${totalVal}\n`;
             });
         });
 
@@ -788,6 +821,9 @@
                 const buyin = parseFloat(cols[4]) || 0;
                 const entries = parseInt(cols[5]) || 1;
                 const prize = parseFloat(cols[6]) || 0;
+                
+                // 기존 백업 파일(총 명수 없음) 호환성을 위해 체크 후 삽입
+                const totalPlayers = (cols[7] && cols[7].trim() !== '') ? parseInt(cols[7]) : null;
 
                 if (!presetNameMap[presetName]) {
                     if (currentKeyIndex >= availableKeys.length) continue; 
@@ -803,6 +839,7 @@
                     date: date,
                     name: name,
                     rank: rank,
+                    totalPlayers: totalPlayers,
                     buyin: buyin,
                     entries: entries,
                     prize: prize
