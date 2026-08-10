@@ -263,6 +263,7 @@
         function calculateLateRegTime(startTime, name) {
             let durationMinutes = null;
             if (name.includes("워밍업 터보")) durationMinutes = 53;
+            else if (name.includes("스텝업 바운티")) durationMinutes = 77;            // 확인 완료 (2026.08.10)
             else if (name.includes("스텝업 터보")) durationMinutes = 45;
             else if (name.includes("루키스 터보")) durationMinutes = 45;
             else if (name.includes("데일리 미니 메인")) durationMinutes = 77;
