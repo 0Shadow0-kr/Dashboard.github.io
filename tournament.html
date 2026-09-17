@@ -782,7 +782,7 @@
         }
 
         const ctx1 = document.getElementById('profitChart').getContext('2d');
-        profitChart = new Chart(ctx1, { 
+profitChart = new Chart(ctx1, { 
             type: 'line', 
             data: { 
                 labels: finalLabels, 
@@ -791,11 +791,16 @@
                     data: finalCumProfit, 
                     borderColor: '#f6c000', 
                     backgroundColor: 'rgba(246, 192, 0, 0.1)', 
-                    borderWidth: 3, 
+                    borderWidth: 1, 
                     fill: true, 
-                    tension: 0.1 
+                    tension: 0.1,
+                    pointRadius: 2,       
+                    pointHoverRadius: 4,
+                    // 👇 이 두 줄을 추가하면 점 안쪽이 꽉 채워집니다.
+                    pointBackgroundColor: '#f6c000', 
+                    pointBorderColor: '#f6c000'
                 }] 
-            }, 
+            },
             options: { 
                 responsive: true, 
                 maintainAspectRatio: false,
