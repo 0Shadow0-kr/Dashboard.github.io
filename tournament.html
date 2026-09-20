@@ -767,7 +767,13 @@
             
             if (sIdx <= eIdx && totalTournaments > 0) {
                 finalLabels = labels.slice(sIdx - 1, eIdx);
-                finalCumProfit = cumProfitData.slice(sIdx - 1, eIdx);
+                const slicedProfit = cumProfitData.slice(sIdx - 1, eIdx);
+                
+                // [수정된 부분] 선택한 시작점 바로 이전 시점까지의 누적 수익을 구함 (시작점이 1이면 0)
+                const baseOffset = (sIdx > 1) ? cumProfitData[sIdx - 2] : 0;
+                
+                // 잘라낸 구간의 모든 수익 값에서 이전 누적 수익(baseOffset)을 빼서 0을 기준으로 재조정
+                finalCumProfit = slicedProfit.map(profit => profit - baseOffset);
             }
         }
 
