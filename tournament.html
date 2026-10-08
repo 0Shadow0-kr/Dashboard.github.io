@@ -126,6 +126,54 @@
             .action-btns { gap: 4px; }
             .btn-edit, .btn-delete, .btn-save-edit, .btn-cancel-edit { padding: 8px 0; font-size: 11px; }
         }
+
+        /* ── 토너먼트별 성적 분석: 기존 대시보드와 독립적인 추가 기능 ── */
+        .btn-analyze { background: var(--accent); color: #151515; padding: 9px 14px; font-size: 13px; border-radius: 6px; font-weight: bold; min-width: 0; width: auto; flex: none; }
+        .btn-analyze:hover { filter: brightness(0.91); }
+        .btn-analyze[aria-expanded="true"] { background: #f4dc77; }
+        #tournamentAnalysisSection[hidden] { display: none !important; }
+        #tournamentAnalysisSection { background: #181818; border: 1px solid #47402a; border-radius: 10px; padding: 20px; margin: 10px 0 25px; }
+        .analysis-intro { color: var(--text-sub); font-size: 13px; margin: 8px 0 16px; line-height: 1.6; }
+        .analysis-controls { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; margin-bottom: 15px; }
+        .analysis-control { display: flex; flex-direction: column; gap: 6px; color: var(--text-sub); font-size: 12px; font-weight: bold; }
+        .analysis-control select, .analysis-control input[type="search"], .analysis-control input[type="number"] { min-height: 36px; background: #222; border: 1px solid #555; border-radius: 5px; color: #fff; font: inherit; font-size: 13px; padding: 7px 10px; box-sizing: border-box; }
+        .analysis-control input[type="search"] { width: 200px; }
+        .analysis-control input[type="number"] { width: 110px; }
+        .analysis-control input[hidden] { display: none !important; }
+        .analysis-sort-button { display: inline-flex; width: auto; min-width: 0; flex: none; align-items: center; justify-content: flex-end; gap: 4px; padding: 3px 0; background: transparent; border: 0; color: inherit; font: inherit; font-weight: bold; text-align: inherit; white-space: nowrap; cursor: pointer; }
+        .analysis-sort-button:hover, .analysis-sort-button:focus-visible { color: var(--accent); }
+        .analysis-sort-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+        .analysis-sort-indicator { display: inline-block; min-width: 13px; color: var(--accent); }
+        .analysis-table th:nth-child(2) .analysis-sort-button { justify-content: flex-start; }
+        .analysis-sort-hint { margin: 0 0 10px; color: #aaa; font-size: 12px; }
+        .analysis-check { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; color: #eee; font-size: 13px; cursor: pointer; white-space: nowrap; }
+        .analysis-check input { accent-color: var(--accent); width: 16px; height: 16px; }
+        .analysis-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 10px 0 16px; }
+        .analysis-summary > div { background: #252525; border-radius: 7px; padding: 13px; min-width: 0; }
+        .analysis-summary small { display: block; font-size: 12px; color: var(--text-sub); margin-bottom: 8px; }
+        .analysis-summary strong { font-size: 19px; overflow-wrap: anywhere; }
+        .analysis-table-scroll { width: 100%; overflow-x: auto; }
+        .analysis-table { min-width: 1100px; text-align: right; width: 100%; }
+        .analysis-table th { white-space: nowrap; font-size: 12px; text-align: right; padding: 12px 8px; }
+        .analysis-table td { padding: 12px 8px; font-size: 13px; white-space: nowrap; }
+        .analysis-table th:first-child, .analysis-table td:first-child { color: var(--text-sub); text-align: center; width: 38px; font-weight: normal; }
+        .analysis-table th:nth-child(2), .analysis-table td:nth-child(2) { color: #fff; text-align: left; width: auto; min-width: 180px; font-weight: bold; }
+        .analysis-table th:nth-child(3), .analysis-table td:nth-child(3) { text-align: right; color: inherit; }
+        .analysis-table th:last-child, .analysis-table td:last-child { text-align: center; width: auto; }
+        .analysis-table tbody tr:hover { background: #292929; }
+        .analysis-flag { padding: 5px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; }
+        .analysis-flag.good { background: rgba(3,218,198,.15); color: var(--win-color); }
+        .analysis-flag.bad { background: rgba(207,102,121,.15); color: var(--lose-color); }
+        .analysis-flag.small { background: #333; color: #c4c4c4; }
+        .analysis-note { font-size: 12px; line-height: 1.7; margin: 12px 0 0; color: #aaa; }
+        @media (max-width: 768px) {
+            #tournamentAnalysisSection { padding: 12px; }
+            .analysis-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .analysis-summary strong { font-size: 16px; }
+            .analysis-control { flex: 1 1 135px; }
+            .analysis-control select, .analysis-control input[type="search"], .analysis-control input[type="number"] { width: 100%; }
+            .btn-analyze { padding: 9px 12px; }
+        }
     </style>
 </head>
 <body>
@@ -247,8 +295,63 @@
                 <button onclick="document.getElementById('historyDateFilter').value=''; updateDashboard()" style="background-color: #444; color: #fff; padding: 6px 12px; font-size: 13px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; white-space: nowrap; flex: none; min-width: 0; margin: 0;">전체 보기</button>
             </div>
             
-            <button class="btn-reset-all" onclick="clearAllData()">현재 장부 기록 초기화</button>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-left:auto;">
+                <button id="analysisToggleBtn" type="button" class="btn-analyze" onclick="toggleTournamentAnalysis()" aria-expanded="false" aria-controls="tournamentAnalysisSection">📊 토너먼트별 성적 분석</button>
+                <button class="btn-reset-all" onclick="clearAllData()" style="margin-left:0;">현재 장부 기록 초기화</button>
+            </div>
         </div>
+
+
+        <!-- 토너먼트 이름별 누적 성과: 분석 버튼을 눌러 펼치는 추가 패널 -->
+        <section id="tournamentAnalysisSection" hidden aria-label="토너먼트별 성적 분석">
+            <h3 style="color:var(--accent); margin:0;">📊 토너먼트별 누적 성적</h3>
+            <p class="analysis-intro">현재 선택한 장부의 <b>전체 기록</b>을 같은 토너먼트 이름끼리 묶어 집계합니다. 위의 날짜 필터·차트 회차 필터와는 별개입니다.</p>
+            <div class="analysis-controls">
+                <label class="analysis-control">최소 엔트리
+                    <select id="analysisMinEntries" onchange="onAnalysisMinEntriesChange()">
+                        <option value="1">1회 이상 (전체)</option>
+                        <option value="5">5회 이상</option>
+                        <option value="10">10회 이상</option>
+                        <option value="20">20회 이상</option>
+                        <option value="50">50회 이상</option>
+                        <option value="100">100회 이상</option>
+                        <option value="custom">직접 입력</option>
+                    </select>
+                    <input type="number" id="analysisCustomMinEntries" min="1" step="1" inputmode="numeric" placeholder="최소 횟수" aria-label="최소 엔트리 횟수 직접 입력" oninput="renderTournamentAnalysis()" hidden>
+                </label>
+                <label class="analysis-control">이름 검색
+                    <input type="search" id="analysisSearch" placeholder="토너먼트명 검색" oninput="renderTournamentAnalysis()">
+                </label>
+                <label class="analysis-check"><input type="checkbox" id="analysisExcludeBounty" checked onchange="renderTournamentAnalysis()"> 바운티 제외</label>
+            </div>
+            <div class="analysis-summary">
+                <div><small>표시된 토너먼트 종류</small><strong id="analysisTypes">0</strong></div>
+                <div><small>총 엔트리(리바인 포함)</small><strong id="analysisEntries">0</strong></div>
+                <div><small>수익이 양수인 종류</small><strong id="analysisWinningTypes" class="positive">0</strong></div>
+                <div><small>표시 종목 누적 순수익</small><strong id="analysisTotalNet">0</strong></div>
+            </div>
+            <p class="analysis-sort-hint">열 제목을 누르면 해당 항목 기준 <b>내림차순 → 오름차순 → 기본 ROI 높은 순</b>으로 전환됩니다.</p>
+            <div class="analysis-table-scroll">
+                <table class="analysis-table">
+                    <thead><tr>
+                        <th scope="col">#</th>
+                        <th scope="col"><button type="button" class="analysis-sort-button" data-sort="name" onclick="cycleTournamentAnalysisSort('name')">토너먼트 이름<span class="analysis-sort-indicator" aria-hidden="true"></span></button></th>
+                        <th scope="col"><button type="button" class="analysis-sort-button" data-sort="entries" onclick="cycleTournamentAnalysisSort('entries')">엔트리<span class="analysis-sort-indicator" aria-hidden="true"></span></button></th>
+                        <th scope="col"><button type="button" class="analysis-sort-button" data-sort="sessions" onclick="cycleTournamentAnalysisSort('sessions')">참가 건수<span class="analysis-sort-indicator" aria-hidden="true"></span></button></th>
+                        <th scope="col"><button type="button" class="analysis-sort-button" data-sort="buyin" onclick="cycleTournamentAnalysisSort('buyin')">총 바이인<span class="analysis-sort-indicator" aria-hidden="true"></span></button></th>
+                        <th scope="col"><button type="button" class="analysis-sort-button" data-sort="prize" onclick="cycleTournamentAnalysisSort('prize')">총 상금<span class="analysis-sort-indicator" aria-hidden="true"></span></button></th>
+                        <th scope="col"><button type="button" class="analysis-sort-button" data-sort="net" onclick="cycleTournamentAnalysisSort('net')">누적 순수익<span class="analysis-sort-indicator" aria-hidden="true"></span></button></th>
+                        <th scope="col"><button type="button" class="analysis-sort-button" data-sort="roi" onclick="cycleTournamentAnalysisSort('roi')">ROI<span class="analysis-sort-indicator" aria-hidden="true">↓</span></button></th>
+                        <th scope="col"><button type="button" class="analysis-sort-button" data-sort="avg" onclick="cycleTournamentAnalysisSort('avg')">엔트리당 순수익<span class="analysis-sort-indicator" aria-hidden="true"></span></button></th>
+                        <th scope="col"><button type="button" class="analysis-sort-button" data-sort="itmRate" onclick="cycleTournamentAnalysisSort('itmRate')">ITM (엔트리 기준)<span class="analysis-sort-indicator" aria-hidden="true"></span></button></th>
+                        <th scope="col"><button type="button" class="analysis-sort-button" data-sort="status" onclick="cycleTournamentAnalysisSort('status')">성과 참고<span class="analysis-sort-indicator" aria-hidden="true"></span></button></th>
+                    </tr></thead>
+                    <tbody id="analysisTableBody"></tbody>
+                </table>
+            </div>
+            <p class="analysis-note">계산: 총 바이인 = 1회 바이인 × 엔트리 합계, 누적 순수익 = 획득 상금 − 총 바이인, ROI = 순수익 ÷ 총 바이인 × 100. ITM은 상금을 받은 참가 기록 1건을 입상 1회로 세어 엔트리 합계로 나눈 비율입니다. 무료 토너먼트의 ROI는 ‘—’로 표시합니다.</p>
+            <p class="analysis-note">‘성과 참고’는 엔트리 20회 미만을 표본 부족으로 분류하고, 20회 이상은 현재 기록의 수익 부호만 구분합니다. <b>MTT는 변동성이 크므로 20회 이상이더라도 미래 수익성이나 실력의 증거로 단정할 수 없습니다.</b> 바이인 한도와 BRM도 함께 고려하세요.</p>
+        </section>
 
         <table>
             <thead>
@@ -824,6 +927,191 @@ profitChart = new Chart(ctx1, {
                     }
                 }
             } 
+        });
+        // 분석 창을 펼쳐 둔 경우에만 재집계 (기존 대시보드 로직 유지)
+        renderTournamentAnalysis();
+    }
+
+
+    // ====== 추가 기능: 토너먼트 이름별 성적 분석 (원본 기록에는 일절 쓰지 않음) ======
+    function toggleTournamentAnalysis() {
+        const panel = document.getElementById('tournamentAnalysisSection');
+        const button = document.getElementById('analysisToggleBtn');
+        const willOpen = panel.hidden;
+        panel.hidden = !willOpen;
+        button.setAttribute('aria-expanded', String(willOpen));
+        button.textContent = willOpen ? '📊 토너먼트별 분석 닫기' : '📊 토너먼트별 성적 분석';
+        if (willOpen) renderTournamentAnalysis();
+    }
+
+    function getTournamentAnalysisRows() {
+        // 현재 기록 장부의 전체 데이터를 사용하며, 날짜별/차트별 필터는 적용하지 않습니다.
+        const records = JSON.parse(localStorage.getItem(getStorageKey())) || [];
+        const groups = new Map();
+        records.forEach(row => {
+            const name = String(row.name || '이름 없음').trim().replace(/\s+/g, ' ');
+            const key = name || '이름 없음';
+            if (!groups.has(key)) {
+                groups.set(key, { name: key, entries: 0, sessions: 0, itm: 0, buyin: 0, prize: 0 });
+            }
+            const group = groups.get(key);
+            const entryCount = Math.max(1, Math.trunc(Number(row.entries) || 1));
+            const oneBuyin = Number(row.buyin) || 0;
+            const prize = Number(row.prize) || 0;
+            group.entries += entryCount;
+            group.sessions++;
+            group.buyin += oneBuyin * entryCount;
+            group.prize += prize;
+            if (prize > 0) group.itm++; // 기존 대시보드와 동일: 상금 지급 기록당 ITM 1회
+        });
+        return Array.from(groups.values()).map(group => {
+            group.net = group.prize - group.buyin;
+            group.roi = group.buyin > 0 ? group.net / group.buyin * 100 : null;
+            group.avg = group.entries > 0 ? group.net / group.entries : 0;
+            group.itmRate = group.entries > 0 ? group.itm / group.entries * 100 : 0;
+            return group;
+        });
+    }
+
+    // 클릭 정렬 상태: 선택 없음은 언제나 ROI 내림차순(기본값)입니다.
+    let analysisSortState = { key: null, direction: null };
+
+    function cycleTournamentAnalysisSort(key) {
+        if (analysisSortState.key !== key) {
+            analysisSortState = { key, direction: 'desc' };
+        } else if (analysisSortState.direction === 'desc') {
+            analysisSortState = { key, direction: 'asc' };
+        } else {
+            analysisSortState = { key: null, direction: null };
+        }
+        renderTournamentAnalysis();
+    }
+
+    function onAnalysisMinEntriesChange() {
+        const selected = document.getElementById('analysisMinEntries').value;
+        const custom = document.getElementById('analysisCustomMinEntries');
+        custom.hidden = selected !== 'custom';
+        if (!custom.hidden) custom.focus();
+        renderTournamentAnalysis();
+    }
+
+    function getAnalysisMinimumEntries() {
+        const selected = document.getElementById('analysisMinEntries').value;
+        const input = selected === 'custom'
+            ? document.getElementById('analysisCustomMinEntries').value
+            : selected;
+        const parsed = Number(input);
+        return Number.isFinite(parsed) && parsed >= 1 ? Math.ceil(parsed) : 1;
+    }
+
+    function analysisRowStatus(row) {
+        return row.entries < 20 ? '표본 부족' : (row.net > 0 ? '수익 우위' : (row.net < 0 ? '손실 점검' : '손익분기'));
+    }
+
+    function compareAnalysisDefault(a, b) {
+        // ROI 미정의(바이인 0) 종목은 기본 정렬과 ROI 직접 정렬에서 마지막에 둡니다.
+        if (a.roi === null) return b.roi === null ? (b.net - a.net || a.name.localeCompare(b.name, 'ko')) : 1;
+        if (b.roi === null) return -1;
+        return b.roi - a.roi || b.net - a.net || b.entries - a.entries || a.name.localeCompare(b.name, 'ko');
+    }
+
+    function updateAnalysisSortHeaders() {
+        document.querySelectorAll('.analysis-sort-button').forEach(button => {
+            const key = button.dataset.sort;
+            const isCustom = analysisSortState.key === key;
+            const isDefault = !analysisSortState.key && key === 'roi';
+            const dir = isCustom ? analysisSortState.direction : (isDefault ? 'desc' : null);
+            button.querySelector('.analysis-sort-indicator').textContent = dir === 'desc' ? '↓' : (dir === 'asc' ? '↑' : '');
+            button.parentElement.setAttribute('aria-sort', dir === 'desc' ? 'descending' : (dir === 'asc' ? 'ascending' : 'none'));
+            button.title = isCustom
+                ? (dir === 'desc' ? '클릭: 오름차순' : '클릭: 기본 ROI순으로 복귀')
+                : '클릭: 내림차순';
+        });
+    }
+
+    function renderTournamentAnalysis() {
+        const panel = document.getElementById('tournamentAnalysisSection');
+        if (!panel || panel.hidden) return;
+
+        updateAnalysisSortHeaders();
+        const minEntries = getAnalysisMinimumEntries();
+        const query = document.getElementById('analysisSearch').value.trim().toLocaleLowerCase();
+        const excludeBounty = document.getElementById('analysisExcludeBounty').checked;
+        const rows = getTournamentAnalysisRows().filter(row =>
+            row.entries >= minEntries &&
+            row.name.toLocaleLowerCase().includes(query) &&
+            (!excludeBounty || !/바운티|bounty/i.test(row.name))
+        );
+
+        rows.sort((a, b) => {
+            const { key, direction } = analysisSortState;
+            if (!key) return compareAnalysisDefault(a, b);
+            const factor = direction === 'desc' ? -1 : 1;
+            if (key === 'roi') {
+                // 바이인 0인 종목은 ROI가 계산되지 않으므로 오름차순에서도 마지막에 둡니다.
+                if (a.roi === null && b.roi !== null) return 1;
+                if (a.roi !== null && b.roi === null) return -1;
+                if (a.roi === null && b.roi === null) return compareAnalysisDefault(a, b);
+            }
+            const compared = key === 'name' ? a.name.localeCompare(b.name, 'ko')
+                : key === 'status' ? analysisRowStatus(a).localeCompare(analysisRowStatus(b), 'ko')
+                : a[key] - b[key];
+            return factor * compared || compareAnalysisDefault(a, b);
+        });
+
+        const numberFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 });
+        const formatNum = value => numberFormat.format(Math.round(value));
+        const summary = rows.reduce((acc, row) => {
+            acc.entries += row.entries;
+            acc.net += row.net;
+            if (row.net > 0) acc.winning++;
+            return acc;
+        }, { entries: 0, net: 0, winning: 0 });
+        document.getElementById('analysisTypes').textContent = formatNum(rows.length);
+        document.getElementById('analysisEntries').textContent = formatNum(summary.entries);
+        document.getElementById('analysisWinningTypes').textContent = formatNum(summary.winning);
+        const netEl = document.getElementById('analysisTotalNet');
+        netEl.textContent = formatNum(summary.net);
+        netEl.className = summary.net >= 0 ? 'positive' : 'negative';
+
+        const body = document.getElementById('analysisTableBody');
+        body.replaceChildren();
+        if (!rows.length) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 11;
+            td.textContent = '조건에 맞는 토너먼트 기록이 없습니다.';
+            td.style.cssText = 'text-align:center; color:#aaa; padding:25px;';
+            tr.appendChild(td);
+            body.appendChild(tr);
+            return;
+        }
+
+        rows.forEach((row, index) => {
+            const tr = document.createElement('tr');
+            function appendCell(value, cssClass = '') {
+                const td = document.createElement('td');
+                td.textContent = String(value);
+                if (cssClass) td.className = cssClass;
+                tr.appendChild(td);
+                return td;
+            }
+            appendCell(index + 1);
+            appendCell(row.name);
+            appendCell(formatNum(row.entries));
+            appendCell(formatNum(row.sessions));
+            appendCell(formatNum(row.buyin));
+            appendCell(formatNum(row.prize));
+            appendCell(formatNum(row.net), row.net >= 0 ? 'positive' : 'negative');
+            appendCell(row.roi === null ? '—' : row.roi.toFixed(1) + '%', row.roi === null ? '' : (row.roi >= 0 ? 'positive' : 'negative'));
+            appendCell(formatNum(row.avg), row.avg >= 0 ? 'positive' : 'negative');
+            appendCell(row.itmRate.toFixed(1) + '%');
+            const status = appendCell('');
+            const badge = document.createElement('span');
+            badge.className = 'analysis-flag ' + (row.entries < 20 ? 'small' : (row.net > 0 ? 'good' : (row.net < 0 ? 'bad' : 'small')));
+            badge.textContent = analysisRowStatus(row);
+            status.appendChild(badge);
+            body.appendChild(tr);
         });
     }
 
