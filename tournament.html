@@ -75,8 +75,10 @@
         th { color: var(--text-sub); text-align: right; font-size: 14px; }
         
         th:first-child, td:first-child { text-align: center; font-weight: bold; color: var(--accent); width: 60px; }
-        th:nth-child(2), td:nth-child(2) { text-align: center; color: var(--text-sub); }
+        th:nth-child(2), td:nth-child(2) { text-align: center; color: var(--text-sub); width: 120px; min-width: 120px; white-space: nowrap; }
         th:nth-child(3), td:nth-child(3) { text-align: left; font-weight: bold; color: #fff; }
+        th:nth-child(4), td:nth-child(4) { text-align: center; width: 140px; min-width: 140px; white-space: nowrap; }
+
         th:last-child, td:last-child { text-align: center; width: 120px; }
         
         .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 8px; }
@@ -1240,9 +1242,10 @@ profitChart = new Chart(ctx1, {
         const reader = new FileReader();
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+            const workbook = XLSX.read(data, {type: 'array', cellDates: false}); // 날짜를 시간대 변환 없는 엑셀 숫자값으로 읽기
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
+            const date1904 = !!(workbook.Workbook && workbook.Workbook.WBProps && workbook.Workbook.WBProps.date1904);
 
             const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1, raw: true});
 
@@ -1282,20 +1285,32 @@ profitChart = new Chart(ctx1, {
                 if(!row || !row[colMap.date]) continue; 
 
                 let dateStr = "";
-                if (row[colMap.date] instanceof Date) {
-                   const d = row[colMap.date];
-                   const yyyy = d.getFullYear();
-                   const mm = String(d.getMonth() + 1).padStart(2, '0');
-                   const dd = String(d.getDate()).padStart(2, '0');
-                   dateStr = `${yyyy}-${mm}-${dd}`;
+                const excelDateValue = row[colMap.date];
+                if (typeof excelDateValue === 'number') {
+                    // Date 객체로 바꾸지 않고 엑셀 고유 날짜값을 달력 날짜로 바로 해석합니다.
+                    // 따라서 브라우저의 시간대와 관계없이 10월 10일은 10월 10일로 유지됩니다.
+                    const parts = XLSX.SSF.parse_date_code(excelDateValue, {date1904: date1904});
+                    if (!parts) continue;
+                    const yyyy = String(parts.y).padStart(4, '0');
+                    const mm = String(parts.m).padStart(2, '0');
+                    const dd = String(parts.d).padStart(2, '0');
+                    dateStr = `${yyyy}-${mm}-${dd}`;
+                } else if (excelDateValue instanceof Date) {
+                    // 날짜 객체가 들어온 경우에도 현지 시간대로 재해석하지 않습니다.
+                    const yyyy = excelDateValue.getUTCFullYear();
+                    const mm = String(excelDateValue.getUTCMonth() + 1).padStart(2, '0');
+                    const dd = String(excelDateValue.getUTCDate()).padStart(2, '0');
+                    dateStr = `${yyyy}-${mm}-${dd}`;
                 } else {
-                   dateStr = String(row[colMap.date]).trim();
-                   let m = dateStr.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
-                   if(m) {
-                       dateStr = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-                   } else {
-                       dateStr = dateStr.substring(0, 10);
-                   }
+                    // 엑셀에 문자로 입력된 날짜는 기존 방식으로 읽습니다.
+                    dateStr = String(excelDateValue).trim();
+                    let m = dateStr.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/)
+                         || dateStr.match(/^(\d{4})(\d{2})(\d{2})$/);
+                    if (m) {
+                        dateStr = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+                    } else {
+                        dateStr = dateStr.substring(0, 10);
+                    }
                 }
 
                 const nameStr = row[colMap.name] ? String(row[colMap.name]).trim() : '이름 없음';
