@@ -1253,6 +1253,59 @@ profitChart = new Chart(ctx1, {
         reader.readAsText(file);
     };
 
+    // ---------- Micro 엑셀 날짜 인식 (엑셀 표시일 및 한국 날짜 기준) ----------
+    function parseMicroExcelCalendarDate(rawValue, formattedValue, date1904) {
+        function validateCalendarDate(year, month, day) {
+            const y = Number(year), m = Number(month), d = Number(day);
+            if (!Number.isInteger(y) || y < 1900 || y > 9999 || !Number.isInteger(m) || !Number.isInteger(d)) return '';
+            const test = new Date(Date.UTC(y, m - 1, d));
+            if (test.getUTCFullYear() !== y || test.getUTCMonth() + 1 !== m || test.getUTCDate() !== d) return '';
+            return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        }
+        function fromCalendarString(v) {
+            if (typeof v !== 'string') return '';
+            const str = v.trim();
+            const ym = str.match(/^(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})(?:\s*일)?\s*\.?(?=$|\s|T)/);
+            if (ym) return validateCalendarDate(ym[1], ym[2], ym[3]);
+            const compact = str.match(/^(\d{4})(\d{2})(\d{2})$/);
+            if (compact) return validateCalendarDate(compact[1], compact[2], compact[3]);
+            const us = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s.*)?$/);
+            if (us) return validateCalendarDate(us[3], us[1], us[2]);
+            return '';
+        }
+        function fromZonedDate(v) {
+            if (typeof v !== 'string') return '';
+            // ISO 날짜/시간에 Z 또는 +/-HH:mm 오프셋이 있으면 한국 시간으로 환산합니다.
+            if (!/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(v.trim()) || !/(?:Z|[+-]\d{2}:?\d{2})$/i.test(v.trim())) return '';
+            const dt = new Date(v.trim());
+            if (isNaN(dt.getTime())) return '';
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+            }).formatToParts(dt);
+            const p = Object.fromEntries(parts.filter(x => x.type !== 'literal').map(x => [x.type, x.value]));
+            return validateCalendarDate(p.year, p.month, p.day);
+        }
+
+        // 이미 시간대가 명시된 텍스트는 문자 앞 10글자를 잘라 날짜를 얻지 않습니다.
+        const zoned = fromZonedDate(rawValue);
+        if (zoned) return zoned;
+
+        // 사용자가 엑셀에서 실제로 보는 YYYY-MM-DD 날짜를 최우선으로 채택합니다.
+        const displayed = fromCalendarString(formattedValue);
+        if (displayed) return displayed;
+
+        // 엑셀 날짜 숫자는 Date 객체를 거치지 않고 SheetJS 달력 코드로 변환합니다.
+        if (typeof rawValue === 'number' && Number.isFinite(rawValue)) {
+            const x = XLSX.SSF.parse_date_code(rawValue, { date1904: date1904 });
+            return x ? validateCalendarDate(x.y, x.m, x.d) : '';
+        }
+        if (rawValue instanceof Date && !isNaN(rawValue.getTime())) {
+            const iso = rawValue.toISOString();
+            return fromZonedDate(iso);
+        }
+        return fromCalendarString(rawValue);
+    }
+
     // ---------- Micro 엑셀 리딩 로직 ----------
     window.importMicroExcel = function(event) {
         const file = event.target.files[0];
@@ -1308,34 +1361,13 @@ profitChart = new Chart(ctx1, {
                 const row = rows[i];
                 if(!row || !row[colMap.date]) continue; 
 
-                let dateStr = "";
-                const excelDateValue = row[colMap.date];
-                if (typeof excelDateValue === 'number') {
-                    // Date 객체로 바꾸지 않고 엑셀 고유 날짜값을 달력 날짜로 바로 해석합니다.
-                    // 따라서 브라우저의 시간대와 관계없이 10월 10일은 10월 10일로 유지됩니다.
-                    const parts = XLSX.SSF.parse_date_code(excelDateValue, {date1904: date1904});
-                    if (!parts) continue;
-                    const yyyy = String(parts.y).padStart(4, '0');
-                    const mm = String(parts.m).padStart(2, '0');
-                    const dd = String(parts.d).padStart(2, '0');
-                    dateStr = `${yyyy}-${mm}-${dd}`;
-                } else if (excelDateValue instanceof Date) {
-                    // 날짜 객체가 들어온 경우에도 현지 시간대로 재해석하지 않습니다.
-                    const yyyy = excelDateValue.getUTCFullYear();
-                    const mm = String(excelDateValue.getUTCMonth() + 1).padStart(2, '0');
-                    const dd = String(excelDateValue.getUTCDate()).padStart(2, '0');
-                    dateStr = `${yyyy}-${mm}-${dd}`;
-                } else {
-                    // 엑셀에 문자로 입력된 날짜는 기존 방식으로 읽습니다.
-                    dateStr = String(excelDateValue).trim();
-                    let m = dateStr.match(/(\d{4})[-./](\d{1,2})[-./](\d{1,2})/)
-                         || dateStr.match(/^(\d{4})(\d{2})(\d{2})$/);
-                    if (m) {
-                        dateStr = `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
-                    } else {
-                        dateStr = dateStr.substring(0, 10);
-                    }
-                }
+                // 열의 실제 셀도 확인해 엑셀에 표시된 날짜를 보존합니다.
+                const dateCellAddress = XLSX.utils.encode_cell({r: i, c: colMap.date});
+                const dateCell = worksheet[dateCellAddress];
+                const dateStr = parseMicroExcelCalendarDate(
+                    row[colMap.date], dateCell ? dateCell.w : '', date1904
+                );
+                if (!dateStr) continue; // 인식할 수 없는 날짜는 잘못된 날짜로 저장하지 않음
 
                 const nameStr = row[colMap.name] ? String(row[colMap.name]).trim() : '이름 없음';
 
